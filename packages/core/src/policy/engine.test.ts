@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PolicyEngine } from './engine.js';
 import type { PolicySet } from './types.js';
 
@@ -56,6 +56,40 @@ describe('PolicyEngine', () => {
 			};
 			const engine = new PolicyEngine(policies);
 			const decision = engine.evaluate(makeRequest('read_file', ['editor']));
+			expect(decision.verdict).toBe('allow');
+			expect(decision.matchedRule).toBe('allow[1]');
+		});
+
+		it('continues checking later allow rules when earlier params do not match', () => {
+			const policies: PolicySet = {
+				version: '1',
+				tools: {
+					send_notification: {
+						allow: [
+							{
+								roles: ['user'],
+								params: {
+									channel: {
+										enum: ['email'],
+									},
+								},
+							},
+							{
+								roles: ['user'],
+								params: {
+									channel: {
+										enum: ['sms'],
+									},
+								},
+							},
+						],
+					},
+				},
+			};
+			const engine = new PolicyEngine(policies);
+			const decision = engine.evaluate(
+				makeRequest('send_notification', ['user'], { channel: 'sms' }),
+			);
 			expect(decision.verdict).toBe('allow');
 			expect(decision.matchedRule).toBe('allow[1]');
 		});
@@ -298,18 +332,11 @@ describe('PolicyEngine', () => {
 				},
 			};
 			const engine = new PolicyEngine(policies);
-			const decision = engine.evaluate(
-				makeRequest('read_file', ['user'], { path: '/etc/passwd' }),
-			);
+			const decision = engine.evaluate(makeRequest('read_file', ['user'], { path: '/etc/passwd' }));
 			expect(decision.verdict).toBe('deny');
 		});
 
-		it('deny rule with contains: deny fires when params pass (no blocked content found)', () => {
-			// In the engine, deny rules with params fire when checkParamConstraints
-			// returns passed: true. The `contains` constraint returns passed: false
-			// when blocked content IS found, so the deny fires for safe queries
-			// (where none of the blocked strings are present). This is because deny
-			// rules use params to scope WHEN the deny applies.
+		it('deny rule with contains fires when blocked content is present', () => {
 			const policies: PolicySet = {
 				version: '1',
 				tools: {
@@ -323,17 +350,15 @@ describe('PolicyEngine', () => {
 				},
 			};
 			const engine = new PolicyEngine(policies);
-			// Query with blocked content: deny rule skips (params failed = doesn't match scope)
 			const decision = engine.evaluate(
 				makeRequest('run_query', ['user'], { query: 'DROP TABLE users' }),
 			);
-			expect(decision.verdict).toBe('allow');
+			expect(decision.verdict).toBe('deny');
 
-			// Query without blocked content: deny rule fires (params passed = matches scope)
 			const safeDec = engine.evaluate(
 				makeRequest('run_query', ['user'], { query: 'SELECT * FROM users' }),
 			);
-			expect(safeDec.verdict).toBe('deny');
+			expect(safeDec.verdict).toBe('allow');
 		});
 
 		it('handles min/max number constraints', () => {
@@ -349,15 +374,15 @@ describe('PolicyEngine', () => {
 				},
 			};
 			const engine = new PolicyEngine(policies);
-			expect(
-				engine.evaluate(makeRequest('set_limit', ['user'], { count: 50 })).verdict,
-			).toBe('allow');
-			expect(
-				engine.evaluate(makeRequest('set_limit', ['user'], { count: 200 })).verdict,
-			).toBe('deny');
-			expect(
-				engine.evaluate(makeRequest('set_limit', ['user'], { count: 0 })).verdict,
-			).toBe('deny');
+			expect(engine.evaluate(makeRequest('set_limit', ['user'], { count: 50 })).verdict).toBe(
+				'allow',
+			);
+			expect(engine.evaluate(makeRequest('set_limit', ['user'], { count: 200 })).verdict).toBe(
+				'deny',
+			);
+			expect(engine.evaluate(makeRequest('set_limit', ['user'], { count: 0 })).verdict).toBe(
+				'deny',
+			);
 		});
 
 		it('handles maxLength constraint', () => {
@@ -377,9 +402,8 @@ describe('PolicyEngine', () => {
 				engine.evaluate(makeRequest('send_message', ['user'], { message: 'hi' })).verdict,
 			).toBe('allow');
 			expect(
-				engine.evaluate(
-					makeRequest('send_message', ['user'], { message: 'this is too long!' }),
-				).verdict,
+				engine.evaluate(makeRequest('send_message', ['user'], { message: 'this is too long!' }))
+					.verdict,
 			).toBe('deny');
 		});
 
@@ -396,9 +420,7 @@ describe('PolicyEngine', () => {
 				},
 			};
 			const engine = new PolicyEngine(policies);
-			expect(
-				engine.evaluate(makeRequest('query', ['user'], {})).verdict,
-			).toBe('allow');
+			expect(engine.evaluate(makeRequest('query', ['user'], {})).verdict).toBe('allow');
 			expect(
 				engine.evaluate(makeRequest('query', ['user'], { admin_override: true })).verdict,
 			).toBe('deny');
@@ -545,6 +567,37 @@ describe('PolicyEngine', () => {
 			const decision = engine.evaluate(makeRequest('deploy', ['user']));
 			expect(decision.verdict).toBe('deny');
 		});
+
+		it('resolves named top-level conditions from the policy set', () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-03-18T14:00:00Z'));
+
+			const policies: PolicySet = {
+				version: '1',
+				conditions: {
+					business_hours: {
+						time: {
+							days: ['wednesday'],
+							hours: { after: '09:00', before: '17:00' },
+							timezone: 'America/New_York',
+						},
+					},
+				},
+				tools: {
+					deploy: {
+						allow: {
+							roles: ['user'],
+							conditions: {
+								business_hours: {},
+							},
+						},
+					},
+				},
+			};
+			const engine = new PolicyEngine(policies);
+			const decision = engine.evaluate(makeRequest('deploy', ['user']));
+			expect(decision.verdict).toBe('allow');
+		});
 	});
 
 	describe('decision metadata', () => {
@@ -596,7 +649,7 @@ describe('PolicyEngine', () => {
 			const engine = new PolicyEngine(policies);
 			const tp = engine.getToolPolicy('a');
 			expect(tp).toBeDefined();
-			expect(tp!.allow).toEqual({ roles: ['user'] });
+			expect(tp?.allow).toEqual({ roles: ['user'] });
 		});
 
 		it('getToolPolicy returns undefined for unknown tool', () => {

@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-	resolveRoles,
-	getEffectiveRoles,
-	checkRoleAccess,
-	checkParamConstraints,
-	checkTimeCondition,
 	checkConditions,
+	checkParamConstraints,
+	checkRoleAccess,
+	checkTimeCondition,
+	getEffectiveRoles,
+	resolveRoles,
 } from './conditions.js';
 
 describe('resolveRoles', () => {
@@ -129,22 +129,52 @@ describe('checkParamConstraints', () => {
 		});
 	});
 
-	describe('contains (blocked values)', () => {
-		it('fails when value contains a blocked string', () => {
+	describe('contains', () => {
+		it('passes when value contains a required string', () => {
 			const result = checkParamConstraints(
-				{ query: { contains: ['DROP', 'DELETE'] } },
+				{ query: { contains: ['SELECT', 'WITH'] } },
+				{ query: 'SELECT * FROM users' },
+			);
+			expect(result.passed).toBe(true);
+		});
+
+		it('fails when value does not contain any required string', () => {
+			const result = checkParamConstraints(
+				{ query: { contains: ['SELECT', 'WITH'] } },
 				{ query: 'DROP TABLE users' },
 			);
 			expect(result.passed).toBe(false);
 			expect(result.failedParam).toBe('query');
+			expect(result.failedReason).toContain('required content');
 		});
+	});
 
+	describe('notContains', () => {
 		it('passes when value does not contain blocked strings', () => {
 			const result = checkParamConstraints(
-				{ query: { contains: ['DROP', 'DELETE'] } },
+				{ query: { notContains: ['DROP', 'DELETE'] } },
 				{ query: 'SELECT * FROM users' },
 			);
 			expect(result.passed).toBe(true);
+		});
+
+		it('fails when value contains a blocked string', () => {
+			const result = checkParamConstraints(
+				{ query: { notContains: ['DROP', 'DELETE'] } },
+				{ query: 'DROP TABLE users' },
+			);
+			expect(result.passed).toBe(false);
+			expect(result.failedParam).toBe('query');
+			expect(result.failedReason).toContain('blocked value');
+		});
+
+		it('fails when a string array contains a blocked value', () => {
+			const result = checkParamConstraints(
+				{ fields: { notContains: ['ssn', 'creditCard'] } },
+				{ fields: ['id', 'email', 'ssn'] },
+			);
+			expect(result.passed).toBe(false);
+			expect(result.failedParam).toBe('fields');
 		});
 	});
 
@@ -169,27 +199,18 @@ describe('checkParamConstraints', () => {
 
 	describe('min/max', () => {
 		it('passes when number is within range', () => {
-			const result = checkParamConstraints(
-				{ count: { min: 1, max: 100 } },
-				{ count: 50 },
-			);
+			const result = checkParamConstraints({ count: { min: 1, max: 100 } }, { count: 50 });
 			expect(result.passed).toBe(true);
 		});
 
 		it('fails when number is below min', () => {
-			const result = checkParamConstraints(
-				{ count: { min: 1 } },
-				{ count: 0 },
-			);
+			const result = checkParamConstraints({ count: { min: 1 } }, { count: 0 });
 			expect(result.passed).toBe(false);
 			expect(result.failedReason).toContain('minimum');
 		});
 
 		it('fails when number exceeds max', () => {
-			const result = checkParamConstraints(
-				{ count: { max: 100 } },
-				{ count: 200 },
-			);
+			const result = checkParamConstraints({ count: { max: 100 } }, { count: 200 });
 			expect(result.passed).toBe(false);
 			expect(result.failedReason).toContain('maximum');
 		});
@@ -197,18 +218,12 @@ describe('checkParamConstraints', () => {
 
 	describe('maxLength', () => {
 		it('passes when string is within max length', () => {
-			const result = checkParamConstraints(
-				{ name: { maxLength: 10 } },
-				{ name: 'short' },
-			);
+			const result = checkParamConstraints({ name: { maxLength: 10 } }, { name: 'short' });
 			expect(result.passed).toBe(true);
 		});
 
 		it('fails when string exceeds max length', () => {
-			const result = checkParamConstraints(
-				{ name: { maxLength: 5 } },
-				{ name: 'too long string' },
-			);
+			const result = checkParamConstraints({ name: { maxLength: 5 } }, { name: 'too long string' });
 			expect(result.passed).toBe(false);
 			expect(result.failedReason).toContain('max length');
 		});
@@ -216,18 +231,12 @@ describe('checkParamConstraints', () => {
 
 	describe('forbidden', () => {
 		it('passes when forbidden param is absent', () => {
-			const result = checkParamConstraints(
-				{ secret: { forbidden: true } },
-				{},
-			);
+			const result = checkParamConstraints({ secret: { forbidden: true } }, {});
 			expect(result.passed).toBe(true);
 		});
 
 		it('fails when forbidden param is present', () => {
-			const result = checkParamConstraints(
-				{ secret: { forbidden: true } },
-				{ secret: 'value' },
-			);
+			const result = checkParamConstraints({ secret: { forbidden: true } }, { secret: 'value' });
 			expect(result.passed).toBe(false);
 			expect(result.failedReason).toContain('forbidden');
 		});
@@ -273,28 +282,19 @@ describe('checkParamConstraints', () => {
 
 	describe('maxItems', () => {
 		it('passes when array is within max items', () => {
-			const result = checkParamConstraints(
-				{ ids: { maxItems: 5 } },
-				{ ids: [1, 2, 3] },
-			);
+			const result = checkParamConstraints({ ids: { maxItems: 5 } }, { ids: [1, 2, 3] });
 			expect(result.passed).toBe(true);
 		});
 
 		it('fails when array exceeds max items', () => {
-			const result = checkParamConstraints(
-				{ ids: { maxItems: 2 } },
-				{ ids: [1, 2, 3, 4] },
-			);
+			const result = checkParamConstraints({ ids: { maxItems: 2 } }, { ids: [1, 2, 3, 4] });
 			expect(result.passed).toBe(false);
 			expect(result.failedReason).toContain('max items');
 		});
 	});
 
 	it('skips constraint check when param is undefined (except forbidden)', () => {
-		const result = checkParamConstraints(
-			{ missing: { pattern: '^x' } },
-			{},
-		);
+		const result = checkParamConstraints({ missing: { pattern: '^x' } }, {});
 		expect(result.passed).toBe(true);
 	});
 });
@@ -320,17 +320,25 @@ describe('checkTimeCondition', () => {
 	it('passes when current time is within hours window', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date('2026-03-18T14:00:00'));
-		expect(
-			checkTimeCondition({ hours: { after: '09:00', before: '17:00' } }),
-		).toBe(true);
+		expect(checkTimeCondition({ hours: { after: '09:00', before: '17:00' } })).toBe(true);
 	});
 
 	it('fails when current time is outside hours window', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date('2026-03-18T20:00:00'));
+		expect(checkTimeCondition({ hours: { after: '09:00', before: '17:00' } })).toBe(false);
+	});
+
+	it('supports full day names and timezone-aware evaluation', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-18T14:00:00Z'));
 		expect(
-			checkTimeCondition({ hours: { after: '09:00', before: '17:00' } }),
-		).toBe(false);
+			checkTimeCondition({
+				days: ['wednesday'],
+				hours: { after: '09:00', before: '17:00' },
+				timezone: 'America/New_York',
+			}),
+		).toBe(true);
 	});
 });
 

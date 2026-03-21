@@ -5,6 +5,7 @@ export default defineConfig({
 	format: ['esm'],
 	clean: true,
 	sourcemap: true,
+	platform: 'node',
 	banner: { js: '#!/usr/bin/env node' },
-	external: ['@agentgate/core'],
+	external: ['@miodragmtasic/agentgate-core', 'yaml'],
 });

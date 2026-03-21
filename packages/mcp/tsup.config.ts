@@ -7,5 +7,5 @@ export default defineConfig({
 	clean: true,
 	sourcemap: true,
 	treeshake: true,
-	external: ['@modelcontextprotocol/sdk', 'zod', '@agentgate/core'],
+	external: ['@modelcontextprotocol/sdk', 'zod', '@miodragmtasic/agentgate-core'],
 });

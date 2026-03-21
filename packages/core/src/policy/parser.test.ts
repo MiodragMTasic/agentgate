@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { parsePolicyFromObject, parsePolicyFromYaml } from './parser.js';
+import { describe, expect, it } from 'vitest';
 import { PolicyParseError } from '../errors.js';
+import { parsePolicyFromObject, parsePolicyFromYaml } from './parser.js';
 
 describe('parsePolicyFromObject', () => {
 	it('parses a valid policy object', () => {
@@ -30,9 +30,7 @@ describe('parsePolicyFromObject', () => {
 	});
 
 	it('throws PolicyParseError when version is not a string', () => {
-		expect(() => parsePolicyFromObject({ version: 1, tools: {} })).toThrow(
-			'must have a "version"',
-		);
+		expect(() => parsePolicyFromObject({ version: 1, tools: {} })).toThrow('must have a "version"');
 	});
 
 	it('throws PolicyParseError when tools is missing', () => {

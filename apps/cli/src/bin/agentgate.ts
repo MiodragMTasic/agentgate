@@ -1,8 +1,8 @@
+import { auditCommand } from '../commands/audit.js';
+import { capabilityCommand } from '../commands/capability.js';
 import { initCommand } from '../commands/init.js';
 import { validateCommand } from '../commands/policy/validate.js';
-import { capabilityCommand } from '../commands/capability.js';
 import { testCommand } from '../commands/test.js';
-import { auditCommand } from '../commands/audit.js';
 
 const HELP = `
 agentgate - Permission middleware for AI agents
@@ -19,15 +19,25 @@ Commands:
 
 Options:
   --config, -c        Path to policy file (default: ./agentgate.policy.yml)
+  --scenarios, -s     Path to test scenarios file (default: ./agentgate.scenarios.yml)
   --help, -h          Show this help
   --version, -v       Show version
 
 Examples:
   agentgate init
-  agentgate test --config ./policies.yml
+  agentgate test --config ./policies.yml --scenarios ./agentgate.scenarios.yml
   agentgate capability --role user
   agentgate policy validate
 `;
+
+function getFlagValue(args: string[], flags: string[]): string | undefined {
+	const index = args.findIndex((arg) => flags.includes(arg));
+	if (index >= 0) {
+		return args[index + 1];
+	}
+
+	return undefined;
+}
 
 async function main() {
 	const args = process.argv.slice(2);
@@ -43,24 +53,23 @@ async function main() {
 		return;
 	}
 
-	const configArg = args.find((a, i) => (a === '--config' || a === '-c') && args[i + 1]);
-	const configIdx = args.findIndex((a) => a === '--config' || a === '-c');
-	const configPath = configIdx >= 0 ? args[configIdx + 1] : './agentgate.policy.yml';
+	const configPath = getFlagValue(args, ['--config', '-c']) ?? './agentgate.policy.yml';
+	const scenariosPath = getFlagValue(args, ['--scenarios', '-s']) ?? './agentgate.scenarios.yml';
 
 	switch (command) {
 		case 'init':
 			await initCommand();
 			break;
 		case 'test':
-			await testCommand(configPath!);
+			await testCommand(configPath, scenariosPath);
 			break;
 		case 'audit':
-			await auditCommand(configPath!);
+			await auditCommand();
 			break;
 		case 'policy': {
 			const sub = args[1];
 			if (sub === 'validate') {
-				await validateCommand(configPath!);
+				await validateCommand(configPath);
 			} else {
 				console.error(`Unknown policy subcommand: ${sub}`);
 				process.exit(1);
@@ -68,14 +77,12 @@ async function main() {
 			break;
 		}
 		case 'capability': {
-			const roleArg = args.find((a, i) => a === '--role' && args[i + 1]);
-			const roleIdx = args.findIndex((a) => a === '--role');
-			const role = roleIdx >= 0 ? args[roleIdx + 1] : undefined;
+			const role = getFlagValue(args, ['--role']);
 			if (!role) {
 				console.error('Usage: agentgate capability --role <role>');
 				process.exit(1);
 			}
-			await capabilityCommand(configPath!, role);
+			await capabilityCommand(configPath, role);
 			break;
 		}
 		default:

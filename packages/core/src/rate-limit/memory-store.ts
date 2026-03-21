@@ -5,22 +5,17 @@ interface StoredWindow {
 	expiresAt: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- timer handle varies by runtime
-type TimerHandle = any;
+type TimerHandle = ReturnType<typeof globalThis.setInterval>;
 
 export class MemoryRateLimitStore implements RateLimitStore {
 	private windows = new Map<string, StoredWindow>();
-	private cleanupTimer: TimerHandle = null;
+	private cleanupTimer: TimerHandle | null = null;
 
 	constructor(cleanupIntervalMs = 60_000) {
-		// biome-ignore lint/suspicious/noExplicitAny: timer type varies across runtimes
-		const si = (globalThis as any).setInterval;
-		if (typeof si === 'function') {
-			this.cleanupTimer = si(() => this.cleanup(), cleanupIntervalMs);
-			// Allow the process to exit without waiting for the timer
-			if (this.cleanupTimer && typeof this.cleanupTimer.unref === 'function') {
-				this.cleanupTimer.unref();
-			}
+		this.cleanupTimer = globalThis.setInterval(() => this.cleanup(), cleanupIntervalMs);
+		// Allow the process to exit without waiting for the timer when supported by the runtime.
+		if (typeof this.cleanupTimer === 'object' && 'unref' in this.cleanupTimer) {
+			this.cleanupTimer.unref();
 		}
 	}
 
@@ -67,11 +62,7 @@ export class MemoryRateLimitStore implements RateLimitStore {
 
 	destroy(): void {
 		if (this.cleanupTimer != null) {
-			// biome-ignore lint/suspicious/noExplicitAny: timer type varies across runtimes
-			const ci = (globalThis as any).clearInterval;
-			if (typeof ci === 'function') {
-				ci(this.cleanupTimer);
-			}
+			globalThis.clearInterval(this.cleanupTimer);
 			this.cleanupTimer = null;
 		}
 		this.windows.clear();

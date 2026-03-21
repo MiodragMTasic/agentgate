@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import type { AgentGate } from '@miodragmtasic/agentgate-core';
+import { GateDeniedError } from '@miodragmtasic/agentgate-core';
+import { describe, expect, it, vi } from 'vitest';
 import { gateTool } from './gate-tool.js';
-import type { AgentGate } from '@agentgate/core';
-import { GateDeniedError } from '@agentgate/core';
 
 function createMockGate(verdict: 'allow' | 'deny' | 'pending_approval' = 'allow'): AgentGate {
 	return {

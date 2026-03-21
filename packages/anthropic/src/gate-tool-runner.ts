@@ -1,4 +1,4 @@
-import type { AgentGate, Identity } from '@agentgate/core';
+import type { AgentGate, Identity } from '@miodragmtasic/agentgate-core';
 
 interface RunnableTool {
 	name: string;
@@ -53,7 +53,12 @@ export function createGateToolRunner(gate: AgentGate, identity: Identity) {
 						}
 
 						if (decision.verdict === 'pending_approval') {
-							const approved = await gate.waitForApproval(decision.approvalId!);
+							const approvalId = decision.approvalId;
+							if (!approvalId) {
+								return `[AgentGate DENIED] Approval request missing an approvalId for tool "${tool.name}".`;
+							}
+
+							const approved = await gate.waitForApproval(approvalId);
 							if (!approved) {
 								return `[AgentGate DENIED] Approval denied for tool "${tool.name}".`;
 							}

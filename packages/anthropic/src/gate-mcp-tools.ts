@@ -1,4 +1,4 @@
-import type { AgentGate, Identity } from '@agentgate/core';
+import type { AgentGate, Identity } from '@miodragmtasic/agentgate-core';
 
 interface MCPToolLike {
 	name: string;
@@ -32,7 +32,9 @@ export function gateMcpTools(
 	gate: AgentGate,
 	tools: MCPToolLike[],
 	mcpClient: MCPClientLike,
-	identity: Identity | ((toolName: string, args: Record<string, unknown>) => Identity | Promise<Identity>),
+	identity:
+		| Identity
+		| ((toolName: string, args: Record<string, unknown>) => Identity | Promise<Identity>),
 ) {
 	return tools.map((tool) => ({
 		name: tool.name,
@@ -44,9 +46,7 @@ export function gateMcpTools(
 		},
 		run: async (args: Record<string, unknown>) => {
 			const resolvedIdentity =
-				typeof identity === 'function'
-					? await identity(tool.name, args)
-					: identity;
+				typeof identity === 'function' ? await identity(tool.name, args) : identity;
 
 			const decision = await gate.evaluate({
 				tool: tool.name,
@@ -59,7 +59,12 @@ export function gateMcpTools(
 			}
 
 			if (decision.verdict === 'pending_approval') {
-				const approved = await gate.waitForApproval(decision.approvalId!);
+				const approvalId = decision.approvalId;
+				if (!approvalId) {
+					return `[AgentGate DENIED] Approval request missing an approvalId for MCP tool "${tool.name}".`;
+				}
+
+				const approved = await gate.waitForApproval(approvalId);
 				if (!approved) {
 					return `[AgentGate DENIED] Approval denied for MCP tool "${tool.name}".`;
 				}

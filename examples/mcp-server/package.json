@@ -1,18 +1,19 @@
 {
-  "name": "agentgate-example-mcp",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "tsx index.ts"
-  },
-  "dependencies": {
-    "@agentgate/core": "workspace:*",
-    "@agentgate/mcp": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.9.0",
-    "zod": "^3.24.0"
-  },
-  "devDependencies": {
-    "tsx": "^4.19.0"
-  }
+	"name": "agentgate-example-mcp",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "tsx index.ts",
+		"test": "tsx index.ts"
+	},
+	"dependencies": {
+		"@miodragmtasic/agentgate-core": "workspace:*",
+		"@miodragmtasic/agentgate-mcp": "workspace:*",
+		"@modelcontextprotocol/sdk": "^1.9.0",
+		"zod": "^3.24.0"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.0"
+	}
 }

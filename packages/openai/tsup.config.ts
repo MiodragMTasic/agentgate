@@ -7,5 +7,5 @@ export default defineConfig({
 	clean: true,
 	sourcemap: true,
 	treeshake: true,
-	external: ['openai', '@agentgate/core'],
+	external: ['openai', '@miodragmtasic/agentgate-core'],
 });

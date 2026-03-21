@@ -1,6 +1,6 @@
-import type { AgentGate } from '@agentgate/core';
-import { GateDeniedError } from '@agentgate/core';
-import type { GatedOpenAITool, GateOpenAIToolOptions } from './types.js';
+import type { AgentGate } from '@miodragmtasic/agentgate-core';
+import { GateDeniedError } from '@miodragmtasic/agentgate-core';
+import type { GateOpenAIToolOptions, GatedOpenAITool } from './types.js';
 
 /**
  * Creates a gated OpenAI tool with both the function definition
@@ -22,17 +22,12 @@ import type { GatedOpenAITool, GateOpenAIToolOptions } from './types.js';
  * });
  * ```
  */
-export function gateTool(
-	gate: AgentGate,
-	options: GateOpenAIToolOptions,
-): GatedOpenAITool {
+export function gateTool(gate: AgentGate, options: GateOpenAIToolOptions): GatedOpenAITool {
 	return {
 		definition: options.definition,
 		execute: async (args: Record<string, unknown>) => {
 			const identity =
-				typeof options.identity === 'function'
-					? await options.identity(args)
-					: options.identity;
+				typeof options.identity === 'function' ? await options.identity(args) : options.identity;
 
 			const decision = await gate.evaluate({
 				tool: options.definition.function.name,
@@ -45,9 +40,22 @@ export function gateTool(
 			}
 
 			if (decision.verdict === 'pending_approval') {
-				const approved = await gate.waitForApproval(decision.approvalId!);
+				const approvalId = decision.approvalId;
+				if (!approvalId) {
+					throw new GateDeniedError({
+						...decision,
+						verdict: 'deny',
+						reason: `Approval request missing an approvalId for tool "${options.definition.function.name}".`,
+					});
+				}
+
+				const approved = await gate.waitForApproval(approvalId);
 				if (!approved) {
-					throw new GateDeniedError(decision);
+					throw new GateDeniedError({
+						...decision,
+						verdict: 'deny',
+						reason: `Approval denied for tool "${options.definition.function.name}".`,
+					});
 				}
 			}
 

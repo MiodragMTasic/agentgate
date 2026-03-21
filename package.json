@@ -1,30 +1,33 @@
 {
-  "name": "agentgate",
-  "private": true,
-  "version": "0.0.0",
-  "description": "Permission middleware for AI agents",
-  "packageManager": "pnpm@9.15.4",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "test": "turbo test",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "typecheck": "turbo typecheck",
-    "clean": "turbo clean",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "turbo build && changeset publish"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
-    "@changesets/cli": "^2.27.0",
-    "@types/node": "^25.5.0",
-    "turbo": "^2.3.0",
-    "typescript": "^5.7.0"
-  }
+	"name": "agentgate",
+	"private": true,
+	"version": "0.0.0",
+	"description": "Permission middleware for AI agents",
+	"packageManager": "pnpm@9.15.4",
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"scripts": {
+		"build": "turbo build",
+		"dev": "turbo dev",
+		"test": "turbo test",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"typecheck": "turbo typecheck",
+		"validate:realworld": "node ./scripts/validate-realworld.mjs",
+		"release:check": "node ./scripts/check-release-readiness.mjs",
+		"dispatch:dossier": "python3 ./scripts/build_miodragdev_work_dossier.py",
+		"clean": "turbo clean",
+		"changeset": "changeset",
+		"version-packages": "changeset version",
+		"release": "pnpm release:check && turbo build && changeset publish"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.0",
+		"@changesets/cli": "^2.27.0",
+		"@types/node": "^25.5.0",
+		"turbo": "^2.3.0",
+		"typescript": "^5.7.0"
+	}
 }

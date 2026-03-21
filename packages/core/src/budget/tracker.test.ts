@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { BudgetTracker } from './tracker.js';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { Identity } from '../context/types.js';
+import { BudgetTracker } from './tracker.js';
 
 const user: Identity = { id: 'user_1', roles: ['user'] };
 const orgUser: Identity = { id: 'user_2', roles: ['user'], orgId: 'org_1' };
@@ -187,7 +187,7 @@ describe('BudgetTracker', () => {
 			});
 
 			await tracker.record(user, 'tool_a', 8);
-			let status = await tracker.getStatus(user);
+			const status = await tracker.getStatus(user);
 			expect(status.spent).toBe(8);
 
 			// The InMemoryBudgetStore uses time-bucketed windows.
@@ -195,6 +195,55 @@ describe('BudgetTracker', () => {
 			// but we verify the period and resetsAt are set correctly.
 			expect(status.period).toBe('hourly');
 			expect(status.resetsAt).not.toBeNull();
+		});
+	});
+
+	describe('tool-scoped limits', () => {
+		it('tracks independent usage for each tool', async () => {
+			tracker.setLimit('identity:*:tool:tool_a', {
+				scope: 'identity',
+				maxAmount: 10,
+				period: 'daily',
+			});
+			tracker.setLimit('identity:*:tool:tool_b', {
+				scope: 'identity',
+				maxAmount: 100,
+				period: 'daily',
+			});
+
+			await tracker.record(user, 'tool_a', 8);
+			await tracker.record(user, 'tool_b', 20);
+
+			const toolAStatus = await tracker.getStatus(user, 'tool_a');
+			const toolBStatus = await tracker.getStatus(user, 'tool_b');
+			const summary = await tracker.getStatus(user);
+
+			expect(toolAStatus.limit).toBe(10);
+			expect(toolAStatus.spent).toBe(8);
+			expect(toolBStatus.limit).toBe(100);
+			expect(toolBStatus.spent).toBe(20);
+			expect(summary.limit).toBe(10);
+			expect(summary.spent).toBe(8);
+		});
+
+		it('enforces multiple periods for the same tool', async () => {
+			tracker.setLimit('identity:*:tool:tool_a', {
+				scope: 'identity',
+				maxAmount: 10,
+				period: 'hourly',
+			});
+			tracker.setLimit('identity:*:tool:tool_a', {
+				scope: 'identity',
+				maxAmount: 100,
+				period: 'daily',
+			});
+
+			await tracker.record(user, 'tool_a', 8);
+			const status = await tracker.check(user, 'tool_a', 3);
+
+			expect(status.isExceeded).toBe(true);
+			expect(status.limit).toBe(10);
+			expect(status.period).toBe('hourly');
 		});
 	});
 });

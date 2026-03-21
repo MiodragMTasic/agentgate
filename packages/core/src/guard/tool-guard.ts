@@ -13,9 +13,7 @@ export function createToolGuard<TInput, TOutput>(
 ): (input: TInput) => Promise<TOutput> {
 	return async (input: TInput): Promise<TOutput> => {
 		const identity =
-			typeof config.identity === 'function'
-				? await config.identity(input)
-				: config.identity;
+			typeof config.identity === 'function' ? await config.identity(input) : config.identity;
 
 		const params = config.transformParams
 			? config.transformParams(input)
@@ -23,7 +21,8 @@ export function createToolGuard<TInput, TOutput>(
 
 		const request: GateRequest = {
 			tool: config.name,
-			params: typeof params === 'object' && params !== null ? params as Record<string, unknown> : {},
+			params:
+				typeof params === 'object' && params !== null ? (params as Record<string, unknown>) : {},
 			identity,
 		};
 
@@ -45,9 +44,7 @@ export function createToolGuard<TInput, TOutput>(
 					if (config.onDenied) {
 						return config.onDenied(decision, input);
 					}
-					throw new Error(
-						`[AgentGate DENIED] Approval denied for tool "${config.name}"`,
-					);
+					throw new Error(`[AgentGate DENIED] Approval denied for tool "${config.name}"`);
 				}
 			} else if (config.onPendingApproval) {
 				return config.onPendingApproval(decision, input);

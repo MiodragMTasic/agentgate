@@ -1,10 +1,10 @@
-import { PolicyEngine, parsePolicyFromFile, validatePolicy } from '@agentgate/core';
-import { CapabilityDiscovery } from '@agentgate/core';
+import { PolicyEngine, parsePolicyFromFile, validatePolicy } from '@miodragmtasic/agentgate-core';
+import { CapabilityDiscovery } from '@miodragmtasic/agentgate-core';
 
 export async function capabilityCommand(configPath: string, role: string): Promise<void> {
 	console.log('');
 	console.log(`  Capabilities for role: ${role}`);
-	console.log('  ' + '-'.repeat(50));
+	console.log(`  ${'-'.repeat(50)}`);
 
 	const policy = await parsePolicyFromFile(configPath);
 	validatePolicy(policy);

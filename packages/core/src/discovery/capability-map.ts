@@ -1,7 +1,7 @@
 import type { Identity } from '../context/types.js';
 import type { PolicyEngine } from '../policy/engine.js';
 import type { AccessRule, BudgetPeriods, ToolPolicy } from '../policy/types.js';
-import type { DiscoveryBudgetStatus, CapabilityMap, ToolCapability } from './types.js';
+import type { CapabilityMap, DiscoveryBudgetStatus, ToolCapability } from './types.js';
 
 export class CapabilityDiscovery {
 	private engine: PolicyEngine;
@@ -107,11 +107,8 @@ export class CapabilityDiscovery {
 		return conditions;
 	}
 
-	private extractRateLimit(
-		policy: ToolPolicy,
-	): { remaining: number; resetsAt: Date } | undefined {
-		const rateLimit =
-			policy.rateLimit ?? this.engine.getPolicies().defaults?.rateLimit;
+	private extractRateLimit(policy: ToolPolicy): { remaining: number; resetsAt: Date } | undefined {
+		const rateLimit = policy.rateLimit ?? this.engine.getPolicies().defaults?.rateLimit;
 		if (!rateLimit) return undefined;
 
 		const windowMs = this.parseWindow(rateLimit.window);
@@ -125,8 +122,8 @@ export class CapabilityDiscovery {
 		const match = window.match(/^(\d+)(s|m|h|d)$/);
 		if (!match) return 60_000;
 
-		const value = Number.parseInt(match[1]!, 10);
-		const unit = match[2]!;
+		const [, valueText, unit] = match;
+		const value = Number.parseInt(valueText ?? '60', 10);
 
 		switch (unit) {
 			case 's':
@@ -142,10 +139,7 @@ export class CapabilityDiscovery {
 		}
 	}
 
-	private extractToolBudget(
-		policy: ToolPolicy,
-		identity: Identity,
-	): number | undefined {
+	private extractToolBudget(policy: ToolPolicy, identity: Identity): number | undefined {
 		if (!policy.budget) return undefined;
 
 		const budget = policy.budget;
@@ -163,9 +157,7 @@ export class CapabilityDiscovery {
 		return undefined;
 	}
 
-	private getLowestBudgetLimit(
-		periods: BudgetPeriods,
-	): number | undefined {
+	private getLowestBudgetLimit(periods: BudgetPeriods): number | undefined {
 		let lowest: number | undefined;
 		for (const value of Object.values(periods)) {
 			if (value !== undefined && (lowest === undefined || value < lowest)) {
@@ -221,9 +213,7 @@ export class CapabilityDiscovery {
 		};
 	}
 
-	private getLowestPeriodName(
-		periods: BudgetPeriods,
-	): string {
+	private getLowestPeriodName(periods: BudgetPeriods): string {
 		let lowest: number | undefined;
 		let name = 'total';
 		for (const [key, value] of Object.entries(periods)) {
@@ -238,10 +228,7 @@ export class CapabilityDiscovery {
 	private extractParamConstraints(
 		policy: ToolPolicy,
 	): Record<string, import('../policy/types.js').ParamConstraint> {
-		const constraints: Record<
-			string,
-			import('../policy/types.js').ParamConstraint
-		> = {};
+		const constraints: Record<string, import('../policy/types.js').ParamConstraint> = {};
 
 		const collectFromRules = (rules: AccessRule | AccessRule[] | undefined) => {
 			if (!rules) return;

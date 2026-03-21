@@ -25,15 +25,17 @@ roles:
     inherits:
       - enterprise_user
 
-# Time-based conditions
+# Reusable named conditions
 conditions:
-  business_hours:
+  pricing_window:
     time:
-      days: [monday, tuesday, wednesday, thursday, friday]
+      days: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
       hours:
-        after: "09:00"
-        before: "17:00"
+        after: "00:00"
+        before: "23:59"
       timezone: America/New_York
+  large_price_change:
+    expression: "Math.abs(params.changePercent) > 10"
 
 tools:
   # ── Read-only tools (all tiers) ──────────────────────────────────
@@ -123,16 +125,15 @@ tools:
     allow:
       - roles: [enterprise_user, internal_agent]
         conditions:
-          business_hours: {}
+          pricing_window: {}
         params:
           changePercent:
             min: -20
             max: 20
     requireApproval:
       when:
-        params:
-          changePercent:
-            min: -10
+        conditions:
+          large_price_change: {}
       approvers: [pricing_manager]
       timeout: 30m
       timeoutAction: deny

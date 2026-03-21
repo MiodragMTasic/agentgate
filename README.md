@@ -2,8 +2,7 @@
 
 **Permission middleware for AI agents. TypeScript-native. Works everywhere.**
 
-[![npm version](https://img.shields.io/npm/v/@agentgate/core.svg)](https://www.npmjs.com/package/@agentgate/core)
-[![CI](https://github.com/miodrag/agentgate/actions/workflows/ci.yml/badge.svg)](https://github.com/miodrag/agentgate/actions/workflows/ci.yml)
+[![CI](https://github.com/MiodragMTasic/agentgate/actions/workflows/ci.yml/badge.svg)](https://github.com/MiodragMTasic/agentgate/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)](https://www.typescriptlang.org/)
 
@@ -26,15 +25,25 @@ AgentGate is a permission layer that sits between your agent and its tools. Defi
 | MCP support | Yes | No | No | No | No |
 | Fully open source | Yes | Yes | Partial | No | Partial |
 
-## Quick Start
+## Current Status
+
+- The codebase is validated locally and through packed consumer smoke tests.
+- The publish target is the `@miodragmtasic/agentgate-*` package family.
+- The repo is release-prepared, but the packages are not published yet. Treat this as a source checkout until the first npm release actually lands.
+
+## Local Quick Start
 
 ```bash
-npm install @agentgate/core @agentgate/anthropic
+pnpm install
+pnpm build
+node ./apps/cli/dist/agentgate.js init
+node ./apps/cli/dist/agentgate.js policy validate
+node ./apps/cli/dist/agentgate.js test
 ```
 
 ```typescript
-import { AgentGate, consoleSink } from '@agentgate/core';
-import { gateTool } from '@agentgate/anthropic';
+import { AgentGate, consoleSink } from '@miodragmtasic/agentgate-core';
+import { gateTool } from '@miodragmtasic/agentgate-anthropic';
 
 const gate = new AgentGate({
   policies: './agentgate.policy.yml',
@@ -53,6 +62,31 @@ const tool = gateTool(gate, {
 const result = await tool.run({ to: 'alice@mycompany.com' }); // allowed
 const denied = await tool.run({ to: 'info@competitor.com' }); // denied by policy
 ```
+
+## Validated Surfaces
+
+- `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm build`, `pnpm test`, and `pnpm typecheck` pass locally.
+- Packed `@miodragmtasic/agentgate-core`, `@miodragmtasic/agentgate-anthropic`, `@miodragmtasic/agentgate-openai`, `@miodragmtasic/agentgate-mcp`, and `@miodragmtasic/agentgate-cli` tarballs install into a fresh outside-the-monorepo consumer project.
+- The packaged CLI is exercised end-to-end through `init`, `policy validate`, `test`, and `capability`.
+- The core package is exercised from a packed consumer using YAML policies loaded from disk.
+- Adapter boundaries are contract-tested against Anthropic/OpenAI/MCP SDK request shapes used by this repo.
+- You can rerun the packaged smoke validation with:
+
+```bash
+pnpm validate:realworld
+```
+
+## Not Yet Proven
+
+- Live Anthropic or OpenAI API calls against a real remote account
+- MCP interoperability against a remote third-party server over a real transport
+- Production persistence/load behavior beyond the in-memory stores included here
+- External adoption or traction claims
+
+## Release Guardrails
+
+- Run `pnpm release:check` before any publish attempt.
+- That check verifies the configured package names are still available or already owned by this repo lineage before you publish.
 
 ## Features
 
@@ -90,7 +124,7 @@ const capabilities = gate.discover({ id: 'agent_01', roles: ['agent'] });
 ### Anthropic
 
 ```typescript
-import { gateTool, createGateToolRunner } from '@agentgate/anthropic';
+import { gateTool, createGateToolRunner } from '@miodragmtasic/agentgate-anthropic';
 
 // Option 1: Wrap individual tools
 const tool = gateTool(gate, { name: 'get_weather', identity: user, run, ... });
@@ -106,7 +140,7 @@ const response = await client.beta.messages.runTools({
 ### OpenAI
 
 ```typescript
-import { gateTool } from '@agentgate/openai';
+import { gateTool } from '@miodragmtasic/agentgate-openai';
 
 const tool = gateTool(gate, {
   definition: {
@@ -121,7 +155,7 @@ const tool = gateTool(gate, {
 ### MCP
 
 ```typescript
-import { GateMcpServer } from '@agentgate/mcp';
+import { GateMcpServer } from '@miodragmtasic/agentgate-mcp';
 
 const server = new GateMcpServer(
   { name: 'my-server', version: '1.0.0' },
@@ -193,42 +227,25 @@ tools:
 
 ## CLI
 
-```
-$ npx agentgate init              # Scaffold policy file
-$ npx agentgate policy validate   # Validate policy syntax
-$ npx agentgate test              # Dry-run against test scenarios
-$ npx agentgate capability --role agent
-$ npx agentgate audit             # View decision log
+```bash
+node ./apps/cli/dist/agentgate.js init
+node ./apps/cli/dist/agentgate.js policy validate
+node ./apps/cli/dist/agentgate.js test --scenarios ./agentgate.scenarios.yml
+node ./apps/cli/dist/agentgate.js capability --role agent
+node ./apps/cli/dist/agentgate.js audit
 ```
 
-```
-  agentgate watch
-  ┌──────────────────────────────────────────────┐
-  │  AgentGate v0.1.0        uptime: 2h 14m      │
-  │                                               │
-  │  Decisions    1,247 total   3.2/s             │
-  │  Allowed      1,180 (94.6%)                   │
-  │  Denied          52 (4.2%)                    │
-  │  Pending         15 (1.2%)                    │
-  │                                               │
-  │  Top denied tools:                            │
-  │    send_email       28  (rate limit)          │
-  │    delete_user      14  (role)                │
-  │    read_file        10  (param)               │
-  │                                               │
-  │  Budget: $12.40 / $50.00 daily                │
-  └──────────────────────────────────────────────┘
-```
+When the CLI is installed into a consumer project, the equivalent commands are `pnpm exec agentgate ...`.
 
 ## Packages
 
 | Package | Description |
 | --- | --- |
-| [`@agentgate/core`](./packages/core) | Policy engine, guards, rate limiter, budget, audit, HITL |
-| [`@agentgate/anthropic`](./packages/anthropic) | Adapter for the Anthropic SDK |
-| [`@agentgate/openai`](./packages/openai) | Adapter for the OpenAI SDK |
-| [`@agentgate/mcp`](./packages/mcp) | Adapter for Model Context Protocol |
-| [`@agentgate/cli`](./apps/cli) | CLI for policy validation, testing, and monitoring |
+| [`@miodragmtasic/agentgate-core`](./packages/core) | Policy engine, guards, rate limiter, budget, audit, HITL |
+| [`@miodragmtasic/agentgate-anthropic`](./packages/anthropic) | Adapter for the Anthropic SDK |
+| [`@miodragmtasic/agentgate-openai`](./packages/openai) | Adapter for the OpenAI SDK |
+| [`@miodragmtasic/agentgate-mcp`](./packages/mcp) | Adapter for Model Context Protocol |
+| [`@miodragmtasic/agentgate-cli`](./apps/cli) | CLI for policy validation, scenario testing, and audit inspection |
 
 ## Contributing
 

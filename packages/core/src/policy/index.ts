@@ -1,5 +1,13 @@
 export { PolicyEngine } from './engine.js';
-export { parsePolicyFromFile, parsePolicyFromObject, parsePolicyFromYaml } from './parser.js';
+export {
+	parsePolicyFromFile,
+	parsePolicyFromFileSync,
+	parsePolicyFromObject,
+	parsePolicySource,
+	parsePolicySourceSync,
+	parsePolicyFromYaml,
+	parsePolicyFromYamlSync,
+} from './parser.js';
 export { validatePolicy } from './validate.js';
 export { mergePolicies } from './merge.js';
 export {

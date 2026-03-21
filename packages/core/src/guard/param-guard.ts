@@ -59,8 +59,7 @@ export class ParamGuard {
 	notStartsWith(param: string, prefixes: string[]): this {
 		return this.addRule({
 			param,
-			check: (v) =>
-				typeof v !== 'string' || !prefixes.some((p) => v.startsWith(p)),
+			check: (v) => typeof v !== 'string' || !prefixes.some((p) => v.startsWith(p)),
 			message: `Parameter "${param}" must not start with [${prefixes.join(', ')}]`,
 		});
 	}

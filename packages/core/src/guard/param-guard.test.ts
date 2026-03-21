@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ParamGuard, createParamGuard } from './param-guard.js';
 
 describe('ParamGuard', () => {
@@ -15,7 +15,7 @@ describe('ParamGuard', () => {
 			const result = guard.validate({ email: 'not-an-email' });
 			expect(result.valid).toBe(false);
 			expect(result.errors).toHaveLength(1);
-			expect(result.errors[0]!.param).toBe('email');
+			expect(result.errors[0]?.param).toBe('email');
 		});
 
 		it('fails when value is not a string', () => {
@@ -27,7 +27,7 @@ describe('ParamGuard', () => {
 		it('uses custom message when provided', () => {
 			const guard = new ParamGuard().pattern('id', /^[a-z]+$/, 'ID must be lowercase');
 			const result = guard.validate({ id: 'ABC' });
-			expect(result.errors[0]!.message).toBe('ID must be lowercase');
+			expect(result.errors[0]?.message).toBe('ID must be lowercase');
 		});
 	});
 
@@ -41,7 +41,7 @@ describe('ParamGuard', () => {
 			const guard = new ParamGuard().maxLength('name', 5);
 			const result = guard.validate({ name: 'toolongname' });
 			expect(result.valid).toBe(false);
-			expect(result.errors[0]!.message).toContain('max length');
+			expect(result.errors[0]?.message).toContain('max length');
 		});
 
 		it('fails when value is not a string', () => {
@@ -66,7 +66,7 @@ describe('ParamGuard', () => {
 			const guard = new ParamGuard().range('age', 0, 120);
 			const result = guard.validate({ age: -1 });
 			expect(result.valid).toBe(false);
-			expect(result.errors[0]!.message).toContain('between');
+			expect(result.errors[0]?.message).toContain('between');
 		});
 
 		it('fails when number is above range', () => {
@@ -90,7 +90,7 @@ describe('ParamGuard', () => {
 			const guard = new ParamGuard().oneOf('format', ['json', 'csv']);
 			const result = guard.validate({ format: 'yaml' });
 			expect(result.valid).toBe(false);
-			expect(result.errors[0]!.message).toContain('one of');
+			expect(result.errors[0]?.message).toContain('one of');
 		});
 	});
 
@@ -111,7 +111,7 @@ describe('ParamGuard', () => {
 			const guard = new ParamGuard().required('name');
 			const result = guard.validate({});
 			expect(result.valid).toBe(false);
-			expect(result.errors[0]!.message).toContain('required');
+			expect(result.errors[0]?.message).toContain('required');
 		});
 
 		it('fails when parameter is null', () => {
@@ -130,7 +130,7 @@ describe('ParamGuard', () => {
 			const guard = new ParamGuard().forbidden('secret');
 			const result = guard.validate({ secret: 'value' });
 			expect(result.valid).toBe(false);
-			expect(result.errors[0]!.message).toContain('forbidden');
+			expect(result.errors[0]?.message).toContain('forbidden');
 		});
 	});
 
@@ -181,16 +181,13 @@ describe('ParamGuard', () => {
 			);
 			const result = guard.validate({ even: 3 });
 			expect(result.valid).toBe(false);
-			expect(result.errors[0]!.message).toBe('Must be even');
+			expect(result.errors[0]?.message).toBe('Must be even');
 		});
 	});
 
 	describe('validate', () => {
 		it('returns all errors when multiple rules fail', () => {
-			const guard = new ParamGuard()
-				.required('name')
-				.required('email')
-				.range('age', 0, 120);
+			const guard = new ParamGuard().required('name').required('email').range('age', 0, 120);
 
 			const result = guard.validate({ age: -5 });
 			expect(result.valid).toBe(false);
@@ -198,9 +195,7 @@ describe('ParamGuard', () => {
 		});
 
 		it('returns valid: true and empty errors when all pass', () => {
-			const guard = new ParamGuard()
-				.required('name')
-				.maxLength('name', 50);
+			const guard = new ParamGuard().required('name').maxLength('name', 50);
 			const result = guard.validate({ name: 'Alice' });
 			expect(result.valid).toBe(true);
 			expect(result.errors).toEqual([]);

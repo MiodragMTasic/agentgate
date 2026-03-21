@@ -1,5 +1,10 @@
-import type { PolicySet } from './types.js';
+import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { parse as parseYaml } from 'yaml';
+
 import { PolicyParseError, PolicyValidationError } from '../errors.js';
+
+import type { PolicySet } from './types.js';
 
 export function parsePolicyFromObject(obj: unknown): PolicySet {
 	if (!obj || typeof obj !== 'object') {
@@ -19,10 +24,9 @@ export function parsePolicyFromObject(obj: unknown): PolicySet {
 	return raw as unknown as PolicySet;
 }
 
-export async function parsePolicyFromYaml(yamlStr: string): Promise<PolicySet> {
+export function parsePolicyFromYamlSync(yamlStr: string): PolicySet {
 	try {
-		const yaml = await import('yaml');
-		const parsed = yaml.parse(yamlStr);
+		const parsed = parseYaml(yamlStr);
 		return parsePolicyFromObject(parsed);
 	} catch (err) {
 		if (err instanceof PolicyParseError || err instanceof PolicyValidationError) {
@@ -34,16 +38,19 @@ export async function parsePolicyFromYaml(yamlStr: string): Promise<PolicySet> {
 	}
 }
 
-export async function parsePolicyFromFile(filePath: string): Promise<PolicySet> {
+export async function parsePolicyFromYaml(yamlStr: string): Promise<PolicySet> {
+	return parsePolicyFromYamlSync(yamlStr);
+}
+
+export function parsePolicyFromFileSync(filePath: string): PolicySet {
 	try {
-		const fs = await import('node:fs/promises');
-		const content = await fs.readFile(filePath, 'utf-8');
+		const content = readFileSync(filePath, 'utf-8');
 
 		if (filePath.endsWith('.json')) {
 			return parsePolicyFromObject(JSON.parse(content));
 		}
 
-		return parsePolicyFromYaml(content);
+		return parsePolicyFromYamlSync(content);
 	} catch (err) {
 		if (err instanceof PolicyParseError || err instanceof PolicyValidationError) {
 			throw err;
@@ -52,4 +59,41 @@ export async function parsePolicyFromFile(filePath: string): Promise<PolicySet> 
 			`Failed to read policy file "${filePath}": ${err instanceof Error ? err.message : String(err)}`,
 		);
 	}
+}
+
+export async function parsePolicyFromFile(filePath: string): Promise<PolicySet> {
+	try {
+		const content = await readFile(filePath, 'utf-8');
+
+		if (filePath.endsWith('.json')) {
+			return parsePolicyFromObject(JSON.parse(content));
+		}
+
+		return parsePolicyFromYamlSync(content);
+	} catch (err) {
+		if (err instanceof PolicyParseError || err instanceof PolicyValidationError) {
+			throw err;
+		}
+		throw new PolicyParseError(
+			`Failed to read policy file "${filePath}": ${err instanceof Error ? err.message : String(err)}`,
+		);
+	}
+}
+
+export function parsePolicySourceSync(source: string): PolicySet {
+	const trimmed = source.trim();
+	if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('version')) {
+		return parsePolicyFromYamlSync(source);
+	}
+
+	return parsePolicyFromFileSync(source);
+}
+
+export async function parsePolicySource(source: string): Promise<PolicySet> {
+	const trimmed = source.trim();
+	if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('version')) {
+		return parsePolicyFromYamlSync(source);
+	}
+
+	return parsePolicyFromFile(source);
 }

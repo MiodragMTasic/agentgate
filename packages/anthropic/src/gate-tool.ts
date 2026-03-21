@@ -1,4 +1,4 @@
-import type { AgentGate, Identity } from '@agentgate/core';
+import type { AgentGate, Identity } from '@miodragmtasic/agentgate-core';
 import type { GateToolOptions } from './types.js';
 
 /**
@@ -29,9 +29,7 @@ export function gateTool<TInput extends Record<string, unknown> = Record<string,
 		},
 		run: async (input: TInput): Promise<string> => {
 			const identity =
-				typeof options.identity === 'function'
-					? await options.identity(input)
-					: options.identity;
+				typeof options.identity === 'function' ? await options.identity(input) : options.identity;
 
 			const decision = await gate.evaluate({
 				tool: options.name,
@@ -44,7 +42,12 @@ export function gateTool<TInput extends Record<string, unknown> = Record<string,
 			}
 
 			if (decision.verdict === 'pending_approval') {
-				const approved = await gate.waitForApproval(decision.approvalId!);
+				const approvalId = decision.approvalId;
+				if (!approvalId) {
+					return `[AgentGate DENIED] Approval request missing an approvalId for tool "${options.name}".`;
+				}
+
+				const approved = await gate.waitForApproval(approvalId);
 				if (!approved) {
 					return `[AgentGate DENIED] Approval denied for tool "${options.name}".`;
 				}
@@ -60,7 +63,12 @@ export function gateTool<TInput extends Record<string, unknown> = Record<string,
  */
 export function wrapTool<TInput = unknown>(
 	gate: AgentGate,
-	tool: { name: string; run: (input: TInput) => unknown; parse?: (content: unknown) => TInput; [key: string]: unknown },
+	tool: {
+		name: string;
+		run: (input: TInput) => unknown;
+		parse?: (content: unknown) => TInput;
+		[key: string]: unknown;
+	},
 	identity: Identity | ((input: TInput) => Identity | Promise<Identity>),
 ) {
 	const originalRun = tool.run;
@@ -68,8 +76,7 @@ export function wrapTool<TInput = unknown>(
 	return {
 		...tool,
 		run: async (input: TInput): Promise<unknown> => {
-			const resolvedIdentity =
-				typeof identity === 'function' ? await identity(input) : identity;
+			const resolvedIdentity = typeof identity === 'function' ? await identity(input) : identity;
 
 			const decision = await gate.evaluate({
 				tool: tool.name,
@@ -82,7 +89,12 @@ export function wrapTool<TInput = unknown>(
 			}
 
 			if (decision.verdict === 'pending_approval') {
-				const approved = await gate.waitForApproval(decision.approvalId!);
+				const approvalId = decision.approvalId;
+				if (!approvalId) {
+					return `[AgentGate DENIED] Approval request missing an approvalId for tool "${tool.name}".`;
+				}
+
+				const approved = await gate.waitForApproval(approvalId);
 				if (!approved) {
 					return `[AgentGate DENIED] Approval denied for tool "${tool.name}".`;
 				}

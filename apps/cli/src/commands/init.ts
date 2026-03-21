@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 
 const DEFAULT_POLICY = `version: "1"
 
@@ -16,14 +16,36 @@ roles:
     description: "Read-only tool access"
 
 tools:
-  # Add your tool policies here
-  # Example:
-  # get_weather:
-  #   allow:
-  #     roles: [user, viewer]
-  #   rate_limit:
-  #     max_requests: 30
-  #     window: 60s
+  get_weather:
+    allow:
+      - roles: [admin, user, viewer]
+    rateLimit:
+      maxRequests: 30
+      window: 60s
+
+  delete_user:
+    allow:
+      - roles: [admin]
+`;
+
+const DEFAULT_SCENARIOS = `scenarios:
+  - name: viewer can get weather
+    tool: get_weather
+    identity:
+      id: viewer_1
+      roles: [viewer]
+    params:
+      location: Toronto
+    expected: allow
+
+  - name: user cannot delete a user
+    tool: delete_user
+    identity:
+      id: user_1
+      roles: [user]
+    params:
+      userId: usr_123
+    expected: deny
 `;
 
 export async function initCommand(): Promise<void> {
@@ -33,21 +55,38 @@ export async function initCommand(): Promise<void> {
 	console.log('');
 
 	const policyPath = './agentgate.policy.yml';
+	const scenariosPath = './agentgate.scenarios.yml';
+	const created: string[] = [];
 
-	if (fs.existsSync(policyPath)) {
-		console.log(`  Policy file already exists: ${policyPath}`);
+	if (!existsSync(policyPath)) {
+		writeFileSync(policyPath, DEFAULT_POLICY, 'utf8');
+		created.push(policyPath);
+	}
+
+	if (!existsSync(scenariosPath)) {
+		writeFileSync(scenariosPath, DEFAULT_SCENARIOS, 'utf8');
+		created.push(scenariosPath);
+	}
+
+	if (created.length === 0) {
+		console.log(`  Starter files already exist: ${policyPath}, ${scenariosPath}`);
 		console.log('');
 		return;
 	}
 
-	fs.writeFileSync(policyPath, DEFAULT_POLICY, 'utf-8');
-	console.log(`  Created ${policyPath}`);
+	for (const filePath of created) {
+		console.log(`  Created ${filePath}`);
+	}
+
 	console.log('');
 	console.log('  Next steps:');
-	console.log('    1. Edit agentgate.policy.yml to define your tool policies');
-	console.log('    2. Install an adapter:');
-	console.log('       npm install @agentgate/core @agentgate/anthropic');
-	console.log('    3. Wrap your tools with gateTool()');
-	console.log('    4. Run: agentgate policy validate');
+	console.log('    1. Edit agentgate.policy.yml to match your tools and roles');
+	console.log('    2. Edit agentgate.scenarios.yml to reflect your expected verdicts');
+	console.log(
+		'    3. Build the local packages or install the packaged artifacts you plan to evaluate',
+	);
+	console.log('    4. Wire an AgentGate adapter into your tool runtime');
+	console.log('    5. Run: agentgate policy validate');
+	console.log('    6. Run: agentgate test');
 	console.log('');
 }

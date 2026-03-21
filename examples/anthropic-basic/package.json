@@ -1,17 +1,18 @@
 {
-  "name": "agentgate-example-anthropic",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "tsx index.ts"
-  },
-  "dependencies": {
-    "@agentgate/core": "workspace:*",
-    "@agentgate/anthropic": "workspace:*",
-    "@anthropic-ai/sdk": "^0.39.0"
-  },
-  "devDependencies": {
-    "tsx": "^4.19.0"
-  }
+	"name": "agentgate-example-anthropic",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "tsx index.ts",
+		"test": "tsx index.ts"
+	},
+	"dependencies": {
+		"@miodragmtasic/agentgate-core": "workspace:*",
+		"@miodragmtasic/agentgate-anthropic": "workspace:*",
+		"@anthropic-ai/sdk": "^0.39.0"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.0"
+	}
 }

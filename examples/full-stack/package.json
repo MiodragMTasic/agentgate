@@ -1,18 +1,19 @@
 {
-  "name": "agentgate-example-full-stack",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "tsx agent.ts"
-  },
-  "dependencies": {
-    "@agentgate/core": "workspace:*",
-    "@agentgate/anthropic": "workspace:*",
-    "@agentgate/openai": "workspace:*",
-    "@agentgate/mcp": "workspace:*"
-  },
-  "devDependencies": {
-    "tsx": "^4.19.0"
-  }
+	"name": "agentgate-example-full-stack",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "tsx agent.ts",
+		"test": "tsx agent.ts"
+	},
+	"dependencies": {
+		"@miodragmtasic/agentgate-core": "workspace:*",
+		"@miodragmtasic/agentgate-anthropic": "workspace:*",
+		"@miodragmtasic/agentgate-openai": "workspace:*",
+		"@miodragmtasic/agentgate-mcp": "workspace:*"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.0"
+	}
 }

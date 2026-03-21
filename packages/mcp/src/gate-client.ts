@@ -1,5 +1,5 @@
-import type { AgentGate, Identity } from '@agentgate/core';
-import { GateDeniedError } from '@agentgate/core';
+import type { AgentGate, Identity } from '@miodragmtasic/agentgate-core';
+import { GateDeniedError } from '@miodragmtasic/agentgate-core';
 
 interface MCPClientLike {
 	callTool(params: {
@@ -43,9 +43,22 @@ export function gateClient<T extends MCPClientLike>(
 		}
 
 		if (decision.verdict === 'pending_approval') {
-			const approved = await gate.waitForApproval(decision.approvalId!);
+			const approvalId = decision.approvalId;
+			if (!approvalId) {
+				throw new GateDeniedError({
+					...decision,
+					verdict: 'deny',
+					reason: `Approval request missing an approvalId for tool "${params.name}".`,
+				});
+			}
+
+			const approved = await gate.waitForApproval(approvalId);
 			if (!approved) {
-				throw new GateDeniedError(decision);
+				throw new GateDeniedError({
+					...decision,
+					verdict: 'deny',
+					reason: `Approval denied for tool "${params.name}".`,
+				});
 			}
 		}
 

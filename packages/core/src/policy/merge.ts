@@ -6,7 +6,7 @@ export function mergePolicies(...policySets: PolicySet[]): PolicySet {
 	}
 
 	if (policySets.length === 1) {
-		return policySets[0]!;
+		return policySets[0] ?? { version: '1', tools: {} };
 	}
 
 	const merged: PolicySet = {
@@ -23,8 +23,10 @@ export function mergePolicies(...policySets: PolicySet[]): PolicySet {
 		}
 
 		if (ps.roles) {
+			const mergedRoles = merged.roles ?? {};
+			merged.roles = mergedRoles;
 			for (const [name, def] of Object.entries(ps.roles)) {
-				merged.roles![name] = { ...merged.roles![name], ...def };
+				mergedRoles[name] = { ...mergedRoles[name], ...def };
 			}
 		}
 
@@ -38,8 +40,10 @@ export function mergePolicies(...policySets: PolicySet[]): PolicySet {
 		}
 
 		if (ps.conditions) {
+			const mergedConditions = merged.conditions ?? {};
+			merged.conditions = mergedConditions;
 			for (const [name, cond] of Object.entries(ps.conditions)) {
-				merged.conditions![name] = cond;
+				mergedConditions[name] = cond;
 			}
 		}
 	}

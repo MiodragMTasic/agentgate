@@ -7,5 +7,5 @@ export default defineConfig({
 	clean: true,
 	sourcemap: true,
 	treeshake: true,
-	external: ['@anthropic-ai/sdk', '@agentgate/core'],
+	external: ['@anthropic-ai/sdk', '@miodragmtasic/agentgate-core'],
 });

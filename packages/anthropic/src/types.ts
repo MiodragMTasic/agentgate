@@ -1,4 +1,4 @@
-import type { Identity } from '@agentgate/core';
+import type { Identity } from '@miodragmtasic/agentgate-core';
 
 export interface GateToolOptions<TInput = Record<string, unknown>> {
 	name: string;

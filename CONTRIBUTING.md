@@ -7,7 +7,7 @@ Thanks for your interest in contributing. This guide covers the basics.
 **Prerequisites:** Node.js >= 18, pnpm >= 9
 
 ```bash
-git clone https://github.com/miodrag/agentgate.git
+git clone https://github.com/MiodragMTasic/agentgate.git
 cd agentgate
 pnpm install
 pnpm build
@@ -24,8 +24,6 @@ packages/
   shared/       Shared utilities
 apps/
   cli/          CLI tool
-  dashboard/    Web dashboard
-  docs/         Documentation site
 examples/       Example projects
 ```
 
@@ -58,7 +56,7 @@ chore: update dependencies
 
 ## Adding a New Adapter
 
-1. Create a new package under `packages/` with `@agentgate/core` as a dependency.
+1. Create a new package under `packages/` with `@miodragmtasic/agentgate-core` as a dependency.
 2. Follow the patterns in `packages/anthropic` or `packages/openai`.
 3. Add the package to the packages table in `README.md`.
 4. Add an example project under `examples/`.
@@ -66,7 +64,7 @@ chore: update dependencies
 ## Code Style
 
 - Biome handles formatting and linting. Run `pnpm lint:fix` to auto-fix.
-- No semicolons in the codebase style are enforced by Biome config.
+- Semicolons are enforced by the Biome config.
 - Prefer explicit types over `any`.
 
 ## Changesets

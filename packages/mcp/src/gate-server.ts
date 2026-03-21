@@ -1,4 +1,4 @@
-import type { AgentGate } from '@agentgate/core';
+import type { AgentGate } from '@miodragmtasic/agentgate-core';
 import type {
 	GateMcpServerConfig,
 	GateMcpToolConfig,
@@ -38,21 +38,13 @@ export class GateMcpServer {
 	private tools = new Map<string, { config: GateMcpToolConfig; handler: ToolHandler }>();
 	public readonly config: GateMcpServerConfig;
 
-	constructor(
-		config: GateMcpServerConfig,
-		gate: AgentGate,
-		identityResolver: IdentityResolver,
-	) {
+	constructor(config: GateMcpServerConfig, gate: AgentGate, identityResolver: IdentityResolver) {
 		this.config = config;
 		this.gate = gate;
 		this.identityResolver = identityResolver;
 	}
 
-	registerTool(
-		id: string,
-		config: GateMcpToolConfig,
-		handler: ToolHandler,
-	): void {
+	registerTool(id: string, config: GateMcpToolConfig, handler: ToolHandler): void {
 		const gatedHandler: ToolHandler = async (args, ctx) => {
 			const identity = await this.identityResolver(ctx ?? {});
 
@@ -75,7 +67,20 @@ export class GateMcpServer {
 			}
 
 			if (decision.verdict === 'pending_approval') {
-				const approved = await this.gate.waitForApproval(decision.approvalId!);
+				const approvalId = decision.approvalId;
+				if (!approvalId) {
+					return {
+						content: [
+							{
+								type: 'text',
+								text: `[AgentGate] Approval request missing an approvalId for tool "${id}".`,
+							},
+						],
+						isError: true,
+					};
+				}
+
+				const approved = await this.gate.waitForApproval(approvalId);
 				if (!approved) {
 					return {
 						content: [

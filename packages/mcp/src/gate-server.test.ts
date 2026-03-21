@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { AgentGate } from '@miodragmtasic/agentgate-core';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GateMcpServer } from './gate-server.js';
-import type { AgentGate } from '@agentgate/core';
 
 function createMockGate(verdict: 'allow' | 'deny' | 'pending_approval' = 'allow'): AgentGate {
 	return {
@@ -24,11 +24,7 @@ describe('GateMcpServer', () => {
 	beforeEach(() => {
 		gate = createMockGate('allow');
 		identityResolver.mockClear();
-		server = new GateMcpServer(
-			{ name: 'test-server', version: '1.0.0' },
-			gate,
-			identityResolver,
-		);
+		server = new GateMcpServer({ name: 'test-server', version: '1.0.0' }, gate, identityResolver);
 	});
 
 	describe('registerTool and callTool', () => {
@@ -49,7 +45,7 @@ describe('GateMcpServer', () => {
 
 			const result = await server.callTool('get_weather', { location: 'NYC' });
 
-			expect(result.content[0]!.text).toBe('Weather: sunny');
+			expect(result.content[0]?.text).toBe('Weather: sunny');
 			expect(handler).toHaveBeenCalledWith({ location: 'NYC' }, undefined);
 			expect(gate.evaluate).toHaveBeenCalledWith({
 				tool: 'get_weather',
@@ -80,20 +76,20 @@ describe('GateMcpServer', () => {
 	describe('denial handling', () => {
 		it('returns error content when policy denies', async () => {
 			gate = createMockGate('deny');
-			server = new GateMcpServer(
-				{ name: 'test-server', version: '1.0.0' },
-				gate,
-				identityResolver,
-			);
+			server = new GateMcpServer({ name: 'test-server', version: '1.0.0' }, gate, identityResolver);
 
 			const handler = vi.fn();
-			server.registerTool('delete_data', { title: 'D', description: 'D', inputSchema: {} }, handler);
+			server.registerTool(
+				'delete_data',
+				{ title: 'D', description: 'D', inputSchema: {} },
+				handler,
+			);
 
 			const result = await server.callTool('delete_data', {});
 
 			expect(result.isError).toBe(true);
-			expect(result.content[0]!.text).toContain('[AgentGate]');
-			expect(result.content[0]!.text).toContain('denied');
+			expect(result.content[0]?.text).toContain('[AgentGate]');
+			expect(result.content[0]?.text).toContain('denied');
 			expect(handler).not.toHaveBeenCalled();
 		});
 	});
@@ -101,37 +97,37 @@ describe('GateMcpServer', () => {
 	describe('pending approval', () => {
 		it('returns error when approval is denied', async () => {
 			gate = createMockGate('pending_approval');
-			server = new GateMcpServer(
-				{ name: 'test-server', version: '1.0.0' },
-				gate,
-				identityResolver,
-			);
+			server = new GateMcpServer({ name: 'test-server', version: '1.0.0' }, gate, identityResolver);
 
 			const handler = vi.fn();
-			server.registerTool('deploy', { title: 'Deploy', description: 'D', inputSchema: {} }, handler);
+			server.registerTool(
+				'deploy',
+				{ title: 'Deploy', description: 'D', inputSchema: {} },
+				handler,
+			);
 
 			const result = await server.callTool('deploy', {});
 			expect(result.isError).toBe(true);
-			expect(result.content[0]!.text).toContain('Approval denied');
+			expect(result.content[0]?.text).toContain('Approval denied');
 			expect(handler).not.toHaveBeenCalled();
 		});
 
 		it('proceeds when approval is granted', async () => {
 			gate = createMockGate('pending_approval');
 			(gate.waitForApproval as ReturnType<typeof vi.fn>).mockResolvedValue(true);
-			server = new GateMcpServer(
-				{ name: 'test-server', version: '1.0.0' },
-				gate,
-				identityResolver,
-			);
+			server = new GateMcpServer({ name: 'test-server', version: '1.0.0' }, gate, identityResolver);
 
 			const handler = vi.fn().mockResolvedValue({
 				content: [{ type: 'text', text: 'Deployed!' }],
 			});
-			server.registerTool('deploy', { title: 'Deploy', description: 'D', inputSchema: {} }, handler);
+			server.registerTool(
+				'deploy',
+				{ title: 'Deploy', description: 'D', inputSchema: {} },
+				handler,
+			);
 
 			const result = await server.callTool('deploy', {});
-			expect(result.content[0]!.text).toBe('Deployed!');
+			expect(result.content[0]?.text).toBe('Deployed!');
 			expect(handler).toHaveBeenCalled();
 		});
 	});
@@ -140,7 +136,7 @@ describe('GateMcpServer', () => {
 		it('returns error for unregistered tool', async () => {
 			const result = await server.callTool('nonexistent', {});
 			expect(result.isError).toBe(true);
-			expect(result.content[0]!.text).toContain('not found');
+			expect(result.content[0]?.text).toContain('not found');
 		});
 	});
 

@@ -1,4 +1,4 @@
-import type { AgentGate, Identity } from '@agentgate/core';
+import type { AgentGate, Identity } from '@miodragmtasic/agentgate-core';
 
 interface ToolExecutor {
 	[toolName: string]: (args: Record<string, unknown>) => unknown | Promise<unknown>;
@@ -41,7 +41,15 @@ export function gateToolExecutors(
 			}
 
 			if (decision.verdict === 'pending_approval') {
-				const approved = await gate.waitForApproval(decision.approvalId!);
+				const approvalId = decision.approvalId;
+				if (!approvalId) {
+					return {
+						error: 'Permission denied',
+						reason: `Approval request missing an approvalId for tool "${name}"`,
+					};
+				}
+
+				const approved = await gate.waitForApproval(approvalId);
 				if (!approved) {
 					return {
 						error: 'Permission denied',

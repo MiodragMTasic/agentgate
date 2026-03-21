@@ -38,10 +38,7 @@ export function getEffectiveRoles(
 	return effective;
 }
 
-export function checkRoleAccess(
-	rule: AccessRule,
-	effectiveRoles: Set<string>,
-): boolean {
+export function checkRoleAccess(rule: AccessRule, effectiveRoles: Set<string>): boolean {
 	if (!rule.roles || rule.roles.length === 0) return true;
 	return rule.roles.some((r) => effectiveRoles.has(r));
 }
@@ -72,22 +69,44 @@ export function checkParamConstraints(
 			}
 		}
 
-		if (constraint.contains && typeof value === 'string') {
-			if (constraint.contains.some((c) => value.includes(c))) {
+		const textValues = normalizeTextValues(value);
+
+		if (constraint.contains) {
+			if (!textValues) {
 				return {
 					passed: false,
 					failedParam: paramName,
-					failedReason: `contains blocked value`,
+					failedReason: 'must be a string or string array',
+				};
+			}
+
+			if (
+				!constraint.contains.some((needle) => textValues.some((entry) => entry.includes(needle)))
+			) {
+				return {
+					passed: false,
+					failedParam: paramName,
+					failedReason: 'missing required content',
 				};
 			}
 		}
 
-		if (constraint.notContains && typeof value === 'string') {
-			if (constraint.notContains.some((c) => !value.includes(c))) {
+		if (constraint.notContains) {
+			if (!textValues) {
 				return {
 					passed: false,
 					failedParam: paramName,
-					failedReason: `missing required content`,
+					failedReason: 'must be a string or string array',
+				};
+			}
+
+			if (
+				constraint.notContains.some((needle) => textValues.some((entry) => entry.includes(needle)))
+			) {
+				return {
+					passed: false,
+					failedParam: paramName,
+					failedReason: 'contains blocked value',
 				};
 			}
 		}
@@ -169,12 +188,11 @@ export function checkParamConstraints(
 }
 
 export function checkTimeCondition(condition: TimeCondition): boolean {
-	const now = new Date();
+	const { day, currentMinutes } = getCurrentClockParts(condition.timezone);
 
 	if (condition.days) {
-		const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-		const currentDay = dayNames[now.getDay()]!;
-		if (!condition.days.includes(currentDay)) {
+		const allowedDays = new Set(condition.days.map(normalizeDayName));
+		if (!allowedDays.has(day)) {
 			return false;
 		}
 	}
@@ -184,7 +202,6 @@ export function checkTimeCondition(condition: TimeCondition): boolean {
 		const [afterH, afterM] = after.split(':').map(Number);
 		const [beforeH, beforeM] = before.split(':').map(Number);
 
-		const currentMinutes = now.getHours() * 60 + now.getMinutes();
 		const afterMinutes = (afterH ?? 0) * 60 + (afterM ?? 0);
 		const beforeMinutes = (beforeH ?? 0) * 60 + (beforeM ?? 0);
 
@@ -237,5 +254,60 @@ function evaluateExpression(
 		return new Function(`return (${safeExpr})`)() as boolean;
 	} catch {
 		return false;
+	}
+}
+
+function normalizeTextValues(value: unknown): string[] | null {
+	if (typeof value === 'string') {
+		return [value];
+	}
+
+	if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+		return value;
+	}
+
+	return null;
+}
+
+function normalizeDayName(day: string): string {
+	return day.trim().toLowerCase().slice(0, 3);
+}
+
+function getCurrentClockParts(timezone?: string): {
+	day: string;
+	currentMinutes: number;
+} {
+	const now = new Date();
+
+	if (!timezone) {
+		const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+		return {
+			day: dayNames[now.getDay()] ?? 'sun',
+			currentMinutes: now.getHours() * 60 + now.getMinutes(),
+		};
+	}
+
+	try {
+		const formatter = new Intl.DateTimeFormat('en-US', {
+			timeZone: timezone,
+			weekday: 'short',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+		});
+		const parts = formatter.formatToParts(now);
+		const weekday = parts.find((part) => part.type === 'weekday')?.value ?? 'sun';
+		const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? '0');
+		const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? '0');
+		return {
+			day: normalizeDayName(weekday),
+			currentMinutes: hour * 60 + minute,
+		};
+	} catch {
+		const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+		return {
+			day: dayNames[now.getDay()] ?? 'sun',
+			currentMinutes: now.getHours() * 60 + now.getMinutes(),
+		};
 	}
 }

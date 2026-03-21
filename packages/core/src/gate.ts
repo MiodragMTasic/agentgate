@@ -1,21 +1,21 @@
-import type { GateDecision, GateRequest, Identity } from './context/types.js';
 import type { AuditEvent, AuditSink } from './audit/types.js';
-import type { BudgetStatus, BudgetStore } from './budget/types.js';
+import type { BudgetPeriod, BudgetStatus, BudgetStore } from './budget/types.js';
+import type { GateDecision, GateRequest, Identity } from './context/types.js';
 import type { CapabilityMap } from './discovery/types.js';
 import type { ApprovalRequest, HITLTransport } from './hitl/types.js';
+import type { CostConfig, PolicySet, ToolPolicy } from './policy/types.js';
 import type { RateLimitRule, RateLimitStore } from './rate-limit/types.js';
-import type { PolicySet } from './policy/types.js';
 
-import { PolicyEngine } from './policy/engine.js';
-import { parsePolicyFromFile, parsePolicyFromYaml } from './policy/parser.js';
-import { validatePolicy } from './policy/validate.js';
 import { AuditLogger } from './audit/logger.js';
-import { BudgetTracker } from './budget/tracker.js';
 import { CostRegistry } from './budget/cost-registry.js';
-import { SlidingWindowLimiter } from './rate-limit/sliding-window.js';
-import { MemoryRateLimitStore } from './rate-limit/memory-store.js';
-import { ApprovalFlow } from './hitl/approval-flow.js';
+import { BudgetTracker } from './budget/tracker.js';
 import { CapabilityDiscovery } from './discovery/capability-map.js';
+import { ApprovalFlow } from './hitl/approval-flow.js';
+import { PolicyEngine } from './policy/engine.js';
+import { parsePolicySourceSync } from './policy/parser.js';
+import { validatePolicy } from './policy/validate.js';
+import { MemoryRateLimitStore } from './rate-limit/memory-store.js';
+import { SlidingWindowLimiter } from './rate-limit/sliding-window.js';
 
 type EventHandler = (...args: unknown[]) => void;
 
@@ -53,13 +53,8 @@ export class AgentGate {
 	constructor(config: AgentGateConfig) {
 		this.config = config;
 
-		// Initialize policy engine
-		let policySet: PolicySet;
-		if (typeof config.policies === 'string') {
-			policySet = { version: '1', tools: {} };
-		} else {
-			policySet = config.policies;
-		}
+		const policySet = this.loadPolicySet(config.policies);
+		validatePolicy(policySet);
 
 		this.engine = new PolicyEngine(policySet);
 		this.discovery = new CapabilityDiscovery(this.engine);
@@ -78,17 +73,7 @@ export class AgentGate {
 		);
 
 		// Initialize budget
-		if (config.budget) {
-			this.costRegistry = new CostRegistry();
-			for (const [tool, cost] of Object.entries(config.budget.costs)) {
-				if (typeof cost === 'number') {
-					this.costRegistry.register(tool, cost);
-				} else {
-					this.costRegistry.register(tool, cost);
-				}
-			}
-			this.budgetTracker = new BudgetTracker(config.budget.store);
-		}
+		this.syncBudgetRuntime(policySet);
 
 		// Initialize HITL
 		if (config.hitl) {
@@ -98,51 +83,43 @@ export class AgentGate {
 				timeoutAction: config.hitl.timeoutAction ?? 'deny',
 			});
 		}
-
-		// Load async policies if string path/yaml provided
-		if (typeof config.policies === 'string') {
-			this.loadPoliciesAsync(config.policies);
-		}
 	}
 
-	private async loadPoliciesAsync(source: string): Promise<void> {
-		try {
-			let policySet: PolicySet;
-			if (source.trim().startsWith('{') || source.trim().startsWith('version')) {
-				policySet = await parsePolicyFromYaml(source);
-			} else {
-				policySet = await parsePolicyFromFile(source);
+	private loadPolicySet(policies: string | PolicySet): PolicySet {
+		if (typeof policies === 'string') {
+			try {
+				return parsePolicySourceSync(policies);
+			} catch (err) {
+				if (this.config.debug) {
+					// eslint-disable-next-line no-console
+					globalThis.console?.error('[AgentGate] Failed to load policies:', err);
+				}
+				throw err;
 			}
-			validatePolicy(policySet);
-			this.engine.reload(policySet);
-			this.emit('policy:reloaded', { source });
-		} catch (err) {
-			if (this.config.debug) {
-				// eslint-disable-next-line no-console
-				globalThis.console?.error('[AgentGate] Failed to load policies:', err);
-			}
-			throw err;
 		}
+
+		return policies;
 	}
 
 	async evaluate(request: GateRequest): Promise<GateDecision> {
 		const decision = this.engine.evaluate(request);
+		const toolPolicy = this.engine.getToolPolicy(request.tool);
 
 		// Check rate limits
 		if (decision.verdict === 'allow' && this.rateLimiter) {
-			const toolPolicy = this.engine.getToolPolicy(request.tool);
-			if (toolPolicy?.rateLimit) {
-				const windowMs = parseDurationLocal(toolPolicy.rateLimit.window);
-				const scope = toolPolicy.rateLimit.scope ?? 'identity:tool';
+			const rateLimit = toolPolicy?.rateLimit ?? this.engine.getPolicies().defaults?.rateLimit;
+			if (rateLimit) {
+				const windowMs = parseDurationLocal(rateLimit.window);
+				const scope = rateLimit.scope ?? 'identity:tool';
 				const key = buildRateLimitKey(scope, request);
 
 				const rule: RateLimitRule = {
 					name: request.tool,
 					tools: request.tool,
-					maxRequests: toolPolicy.rateLimit.maxRequests,
+					maxRequests: rateLimit.maxRequests,
 					windowSeconds: windowMs / 1000,
 					scope,
-					strategy: toolPolicy.rateLimit.strategy ?? 'sliding-window',
+					strategy: rateLimit.strategy ?? 'sliding-window',
 				};
 
 				const result = await this.rateLimiter.increment(key, rule);
@@ -151,7 +128,7 @@ export class AgentGate {
 					const rateLimitedDecision: GateDecision = {
 						...decision,
 						verdict: 'deny',
-						reason: `Rate limit exceeded for tool "${request.tool}" (${toolPolicy.rateLimit.maxRequests} per ${toolPolicy.rateLimit.window})`,
+						reason: `Rate limit exceeded for tool "${request.tool}" (${rateLimit.maxRequests} per ${rateLimit.window})`,
 					};
 					this.logDecision(rateLimitedDecision, request);
 					this.emit('rate-limit:hit', { tool: request.tool, identity: request.identity });
@@ -163,30 +140,23 @@ export class AgentGate {
 		// Check budget
 		if (decision.verdict === 'allow' && this.budgetTracker && this.costRegistry) {
 			const cost = this.costRegistry.getCost(request.tool, request.params);
-			if (cost > 0) {
-				const toolPolicy = this.engine.getToolPolicy(request.tool);
-				if (toolPolicy?.budget?.perUser) {
-					const status = await this.budgetTracker.check(
-						request.identity,
-						request.tool,
-						cost,
-					);
-					if (status.isExceeded) {
-						const budgetDecision: GateDecision = {
-							...decision,
-							verdict: 'deny',
-							reason: `Budget exceeded for tool "${request.tool}" (spent ${status.spent} of ${status.limit})`,
-						};
-						this.logDecision(budgetDecision, request);
-						this.emit('budget:exceeded', {
-							tool: request.tool,
-							identity: request.identity,
-							status,
-						});
-						return budgetDecision;
-					}
-					await this.budgetTracker.record(request.identity, request.tool, cost);
+			if (cost > 0 && toolPolicy?.budget) {
+				const status = await this.budgetTracker.check(request.identity, request.tool, cost);
+				if (status.isExceeded) {
+					const budgetDecision: GateDecision = {
+						...decision,
+						verdict: 'deny',
+						reason: `Budget exceeded for tool "${request.tool}" (spent ${status.spent} of ${status.limit})`,
+					};
+					this.logDecision(budgetDecision, request);
+					this.emit('budget:exceeded', {
+						tool: request.tool,
+						identity: request.identity,
+						status,
+					});
+					return budgetDecision;
 				}
+				await this.budgetTracker.record(request.identity, request.tool, cost);
 			}
 		}
 
@@ -207,16 +177,22 @@ export class AgentGate {
 			this.emit('approval:requested', approvalRequest);
 
 			const approved = await this.approvalFlow.requestApproval(approvalRequest);
+			const approvalTimedOut = approvalRequest.status === 'expired';
 
 			const resolvedDecision: GateDecision = {
 				...decision,
 				verdict: approved ? 'allow' : 'deny',
-				reason: approved
-					? `Approved: ${decision.reason}`
-					: `Approval denied for tool "${request.tool}"`,
+				reason: approvalTimedOut
+					? `Approval timed out for tool "${request.tool}"`
+					: approved
+						? `Approved: ${decision.reason}`
+						: `Approval denied for tool "${request.tool}"`,
 			};
 
-			this.emit(approved ? 'approval:approved' : 'approval:denied', approvalRequest);
+			this.emit(
+				approvalTimedOut ? 'approval:expired' : approved ? 'approval:approved' : 'approval:denied',
+				approvalRequest,
+			);
 			this.logDecision(resolvedDecision, request);
 			return resolvedDecision;
 		}
@@ -225,9 +201,9 @@ export class AgentGate {
 		return decision;
 	}
 
-	async waitForApproval(_approvalId: string): Promise<boolean> {
+	async waitForApproval(approvalId: string): Promise<boolean> {
 		if (!this.approvalFlow) return false;
-		return false;
+		return (await this.approvalFlow.waitForApproval(approvalId)) ?? false;
 	}
 
 	discover(identity: Identity): CapabilityMap {
@@ -243,7 +219,10 @@ export class AgentGate {
 		if (!this.eventHandlers.has(event)) {
 			this.eventHandlers.set(event, new Set());
 		}
-		this.eventHandlers.get(event)!.add(handler);
+		const handlers = this.eventHandlers.get(event);
+		if (handlers) {
+			handlers.add(handler);
+		}
 	}
 
 	off(event: string, handler: EventHandler): void {
@@ -251,13 +230,13 @@ export class AgentGate {
 	}
 
 	async reloadPolicies(policies: string | PolicySet): Promise<void> {
-		if (typeof policies === 'string') {
-			await this.loadPoliciesAsync(policies);
-		} else {
-			validatePolicy(policies);
-			this.engine.reload(policies);
-			this.emit('policy:reloaded', { source: 'inline' });
-		}
+		const policySet = this.loadPolicySet(policies);
+		validatePolicy(policySet);
+		this.engine.reload(policySet);
+		this.syncBudgetRuntime(policySet);
+		this.emit('policy:reloaded', {
+			source: typeof policies === 'string' ? policies : 'inline',
+		});
 	}
 
 	async shutdown(): Promise<void> {
@@ -307,8 +286,96 @@ export class AgentGate {
 			evaluationMs: decision.evaluationTimeMs,
 		};
 
-		this.auditLogger.log(event);
+		void this.auditLogger.log(event).catch(() => undefined);
 		this.emit('decision', event);
+	}
+
+	private syncBudgetRuntime(policySet: PolicySet): void {
+		const toolPolicies = Object.entries(policySet.tools);
+		const hasPolicyCosts = toolPolicies.some(([, toolPolicy]) => toolPolicy.cost !== undefined);
+		const hasPolicyBudgets = toolPolicies.some(([, toolPolicy]) => toolPolicy.budget !== undefined);
+		const hasConfigCosts =
+			this.config.budget !== undefined && Object.keys(this.config.budget.costs).length > 0;
+
+		if (!hasPolicyCosts && !hasPolicyBudgets && !hasConfigCosts) {
+			this.costRegistry = null;
+			this.budgetTracker = null;
+			return;
+		}
+
+		this.costRegistry = new CostRegistry();
+
+		for (const [tool, toolPolicy] of toolPolicies) {
+			if (toolPolicy.cost !== undefined) {
+				const cost = buildCostCalculator(toolPolicy.cost);
+				if (typeof cost === 'number') {
+					this.costRegistry.register(tool, cost);
+				} else {
+					this.costRegistry.register(tool, cost);
+				}
+			}
+		}
+
+		if (this.config.budget) {
+			for (const [tool, cost] of Object.entries(this.config.budget.costs)) {
+				if (typeof cost === 'number') {
+					this.costRegistry.register(tool, cost);
+				} else {
+					this.costRegistry.register(tool, cost);
+				}
+			}
+		}
+
+		if (!hasPolicyBudgets) {
+			this.budgetTracker = null;
+			return;
+		}
+
+		this.budgetTracker = new BudgetTracker(this.config.budget?.store);
+
+		for (const [tool, toolPolicy] of toolPolicies) {
+			if (!toolPolicy.budget) {
+				continue;
+			}
+
+			this.registerBudgetLimits(tool, toolPolicy);
+		}
+	}
+
+	private registerBudgetLimits(tool: string, toolPolicy: ToolPolicy): void {
+		if (!this.budgetTracker || !toolPolicy.budget) {
+			return;
+		}
+
+		for (const [period, amount] of Object.entries(toolPolicy.budget.perUser ?? {})) {
+			if (amount !== undefined) {
+				this.budgetTracker.setLimit(`identity:*:tool:${tool}`, {
+					scope: 'identity',
+					maxAmount: amount,
+					period: period as BudgetPeriod,
+				});
+			}
+		}
+
+		for (const [period, amount] of Object.entries(toolPolicy.budget.perOrg ?? {})) {
+			if (amount !== undefined) {
+				this.budgetTracker.setLimit(`org:*:tool:${tool}`, {
+					scope: 'org',
+					maxAmount: amount,
+					period: period as BudgetPeriod,
+				});
+			}
+		}
+
+		for (const [period, amount] of Object.entries(toolPolicy.budget.global ?? {})) {
+			if (amount !== undefined) {
+				this.budgetTracker.setLimit(`global:tool:${tool}`, {
+					scope: 'global',
+					maxAmount: amount,
+					period: period as BudgetPeriod,
+				});
+			}
+		}
 	}
 }
 
@@ -323,7 +390,8 @@ function parseDurationLocal(duration: string): number {
 		h: 3_600_000,
 		d: 86_400_000,
 	};
-	return Number(amount) * (multipliers[unit!] ?? 1000);
+	const multiplier = unit ? multipliers[unit] : undefined;
+	return Number(amount) * (multiplier ?? 1000);
 }
 
 function buildRateLimitKey(scope: string, request: GateRequest): string {
@@ -334,8 +402,53 @@ function buildRateLimitKey(scope: string, request: GateRequest): string {
 			return `rl:${request.tool}`;
 		case 'global':
 			return 'rl:global';
-		case 'identity:tool':
 		default:
 			return `rl:${request.identity.id}:${request.tool}`;
 	}
+}
+
+function buildCostCalculator(
+	cost: number | CostConfig,
+): number | ((params: Record<string, unknown>) => number) {
+	if (typeof cost === 'number') {
+		return cost;
+	}
+
+	return (params: Record<string, unknown>) => {
+		let total = cost.base;
+
+		for (const [paramName, pricing] of Object.entries(cost.perParam ?? {})) {
+			const value = params[paramName];
+			if (value === undefined) {
+				continue;
+			}
+
+			if (typeof value === 'number') {
+				total += value * pricing.perUnit;
+				continue;
+			}
+
+			if (typeof value === 'string') {
+				total += value === pricing.unit ? pricing.perUnit : 0;
+				continue;
+			}
+
+			if (typeof value === 'boolean') {
+				total +=
+					value && (pricing.unit === undefined || pricing.unit === 'true') ? pricing.perUnit : 0;
+				continue;
+			}
+
+			if (Array.isArray(value)) {
+				if (pricing.unit === undefined) {
+					total += value.length * pricing.perUnit;
+					continue;
+				}
+
+				total += value.filter((entry) => String(entry) === pricing.unit).length * pricing.perUnit;
+			}
+		}
+
+		return total;
+	};
 }

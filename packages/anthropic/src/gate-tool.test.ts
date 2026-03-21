@@ -1,6 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type {
+	BetaTool,
+	MessageCreateParams,
+} from '@anthropic-ai/sdk/resources/beta/messages/messages';
+import type { AgentGate } from '@miodragmtasic/agentgate-core';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { gateTool, wrapTool } from './gate-tool.js';
-import type { AgentGate } from '@agentgate/core';
 
 function createMockGate(verdict: 'allow' | 'deny' | 'pending_approval' = 'allow'): AgentGate {
 	return {
@@ -135,6 +139,33 @@ describe('gateTool', () => {
 		});
 		const obj = { key: 'val' };
 		expect(tool.parse(obj)).toBe(obj);
+	});
+
+	it('produces Anthropic-compatible tool shapes for message requests', () => {
+		const gate = createMockGate('allow');
+		const tool = gateTool(gate, {
+			name: 'send_email',
+			description: 'Send an email',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					to: { type: 'string' },
+				},
+			},
+			identity: { id: 'user_1', roles: ['user'] },
+			run: vi.fn().mockResolvedValue('sent'),
+		});
+
+		const typedTool: BetaTool = tool;
+		const request: MessageCreateParams = {
+			model: 'claude-3-5-sonnet-latest',
+			max_tokens: 64,
+			messages: [{ role: 'user', content: 'send an email' }],
+			tools: [tool],
+		};
+
+		expect(typedTool.name).toBe('send_email');
+		expect(request.tools).toHaveLength(1);
 	});
 });
 

@@ -1,4 +1,4 @@
-import { parsePolicyFromFile, validatePolicy } from '@agentgate/core';
+import { parsePolicyFromFile, validatePolicy } from '@miodragmtasic/agentgate-core';
 
 export async function validateCommand(configPath: string): Promise<void> {
 	console.log('');
@@ -12,13 +12,13 @@ export async function validateCommand(configPath: string): Promise<void> {
 		const toolCount = Object.keys(policy.tools).length;
 		const roleCount = Object.keys(policy.roles ?? {}).length;
 
-		console.log(`  [PASS] Policy is valid`);
+		console.log('  [PASS] Policy is valid');
 		console.log(`         ${toolCount} tool(s), ${roleCount} role(s) defined`);
 		console.log(`         Default verdict: ${policy.defaults?.verdict ?? 'deny'}`);
 		console.log('');
 	} catch (err) {
 		if (err instanceof Error && err.name === 'PolicyValidationError') {
-			console.error(`  [FAIL] Validation errors:`);
+			console.error('  [FAIL] Validation errors:');
 			const errors = (err as { errors?: string[] }).errors ?? [err.message];
 			for (const e of errors) {
 				console.error(`         - ${e}`);

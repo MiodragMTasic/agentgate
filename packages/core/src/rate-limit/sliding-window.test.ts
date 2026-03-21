@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { SlidingWindowLimiter } from './sliding-window.js';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { MemoryRateLimitStore } from './memory-store.js';
+import { SlidingWindowLimiter } from './sliding-window.js';
 import type { RateLimitRule } from './types.js';
 
 const makeRule = (maxRequests = 3, windowSeconds = 60): RateLimitRule => ({

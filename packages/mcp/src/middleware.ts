@@ -1,10 +1,7 @@
-import type { AgentGate, Identity } from '@agentgate/core';
+import type { AgentGate, Identity } from '@miodragmtasic/agentgate-core';
 import type { MCPServerContext, ToolCallResult } from './types.js';
 
-type NextFn = (
-	args: Record<string, unknown>,
-	ctx?: MCPServerContext,
-) => Promise<ToolCallResult>;
+type NextFn = (args: Record<string, unknown>, ctx?: MCPServerContext) => Promise<ToolCallResult>;
 
 type MiddlewareFn = (
 	toolName: string,
@@ -56,7 +53,20 @@ export function createGateMiddleware(
 		}
 
 		if (decision.verdict === 'pending_approval') {
-			const approved = await gate.waitForApproval(decision.approvalId!);
+			const approvalId = decision.approvalId;
+			if (!approvalId) {
+				return {
+					content: [
+						{
+							type: 'text',
+							text: `[AgentGate] Approval request missing an approvalId for tool "${toolName}".`,
+						},
+					],
+					isError: true,
+				};
+			}
+
+			const approved = await gate.waitForApproval(approvalId);
 			if (!approved) {
 				return {
 					content: [

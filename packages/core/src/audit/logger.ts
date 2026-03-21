@@ -8,6 +8,7 @@ export interface AuditLoggerConfig {
 export class AuditLogger {
 	private readonly sinks: AuditSink[];
 	private readonly config: AuditLoggerConfig;
+	private readonly pendingWrites = new Set<Promise<void>>();
 
 	constructor(sinks: AuditSink[], config: AuditLoggerConfig) {
 		this.sinks = sinks;
@@ -20,15 +21,23 @@ export class AuditLogger {
 		}
 
 		const redacted = this.redact(event);
-
-		const results = this.sinks.map((sink) => sink.write(redacted));
-		await Promise.all(results);
+		const pending = Promise.all(this.sinks.map((sink) => sink.write(redacted))).then(
+			() => undefined,
+		);
+		this.pendingWrites.add(pending);
+		try {
+			await pending;
+		} finally {
+			this.pendingWrites.delete(pending);
+		}
 	}
 
 	async flush(): Promise<void> {
-		const results = this.sinks
-			.filter((sink) => sink.flush)
-			.map((sink) => sink.flush!());
+		if (this.pendingWrites.size > 0) {
+			await Promise.all([...this.pendingWrites]);
+		}
+
+		const results = this.sinks.flatMap((sink) => (sink.flush ? [sink.flush()] : []));
 		await Promise.all(results);
 	}
 

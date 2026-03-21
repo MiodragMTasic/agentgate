@@ -7,6 +7,8 @@ export default defineConfig({
 	clean: true,
 	sourcemap: true,
 	treeshake: true,
+	platform: 'node',
 	splitting: false,
 	minify: false,
+	external: ['yaml'],
 });

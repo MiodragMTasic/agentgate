@@ -1,18 +1,18 @@
 import * as fs from 'node:fs';
 
-export async function auditCommand(configPath: string): Promise<void> {
+export async function auditCommand(): Promise<void> {
 	const auditPath = './audit.log';
 
 	console.log('');
 	console.log('  AgentGate Audit Log');
-	console.log('  ' + '='.repeat(50));
+	console.log(`  ${'='.repeat(50)}`);
 	console.log('');
 
 	if (!fs.existsSync(auditPath)) {
 		console.log('  No audit log found at ./audit.log');
 		console.log('  Enable file audit logging in your AgentGate config:');
 		console.log('');
-		console.log('    import { fileSink } from "@agentgate/core";');
+		console.log('    import { fileSink } from "@miodragmtasic/agentgate-core";');
 		console.log('    const gate = new AgentGate({');
 		console.log('      audit: { sinks: [fileSink("./audit.log")] }');
 		console.log('    });');
@@ -30,7 +30,7 @@ export async function auditCommand(configPath: string): Promise<void> {
 	}
 
 	console.log('  TIME                TOOL              USER          VERDICT    REASON');
-	console.log('  ' + '-'.repeat(80));
+	console.log(`  ${'-'.repeat(80)}`);
 
 	const recentLines = lines.slice(-50); // Show last 50 events
 

@@ -1,4 +1,4 @@
-import type { AgentGate, Identity } from '@agentgate/core';
+import type { AgentGate, Identity } from '@miodragmtasic/agentgate-core';
 
 interface FunctionTool {
 	type: 'function';
@@ -56,11 +56,29 @@ export function gateRunToolsParams(
 						identity,
 					});
 
-					if (decision.verdict !== 'allow') {
+					if (decision.verdict === 'deny') {
 						return JSON.stringify({
 							error: 'Permission denied',
 							reason: decision.reason,
 						});
+					}
+
+					if (decision.verdict === 'pending_approval') {
+						const approvalId = decision.approvalId;
+						if (!approvalId) {
+							return JSON.stringify({
+								error: 'Permission denied',
+								reason: `Approval request missing an approvalId for tool "${toolName}".`,
+							});
+						}
+
+						const approved = await gate.waitForApproval(approvalId);
+						if (!approved) {
+							return JSON.stringify({
+								error: 'Permission denied',
+								reason: `Approval denied for tool "${toolName}".`,
+							});
+						}
 					}
 
 					return originalFn(args);

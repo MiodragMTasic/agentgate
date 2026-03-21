@@ -26,9 +26,12 @@ importers:
 
   apps/cli:
     dependencies:
-      '@agentgate/core':
-        specifier: workspace:*
+      '@miodragmtasic/agentgate-core':
+        specifier: 0.1.0
         version: link:../../packages/core
+      yaml:
+        specifier: ^2.6.0
+        version: 2.8.2
     devDependencies:
       '@types/node':
         specifier: ^25.5.0
@@ -42,18 +45,72 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@25.5.0)
 
   examples/anthropic-basic:
     dependencies:
-      '@agentgate/anthropic':
-        specifier: workspace:*
-        version: link:../../packages/anthropic
-      '@agentgate/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
+      '@miodragmtasic/agentgate-anthropic':
+        specifier: workspace:*
+        version: link:../../packages/anthropic
+      '@miodragmtasic/agentgate-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+
+  examples/full-stack:
+    dependencies:
+      '@miodragmtasic/agentgate-anthropic':
+        specifier: workspace:*
+        version: link:../../packages/anthropic
+      '@miodragmtasic/agentgate-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@miodragmtasic/agentgate-mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
+      '@miodragmtasic/agentgate-openai':
+        specifier: workspace:*
+        version: link:../../packages/openai
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+
+  examples/hitl-approval:
+    dependencies:
+      '@miodragmtasic/agentgate-anthropic':
+        specifier: workspace:*
+        version: link:../../packages/anthropic
+      '@miodragmtasic/agentgate-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+
+  examples/mcp-server:
+    dependencies:
+      '@miodragmtasic/agentgate-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@miodragmtasic/agentgate-mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.9.0
+        version: 1.27.1(zod@3.25.76)
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
     devDependencies:
       tsx:
         specifier: ^4.19.0
@@ -61,10 +118,10 @@ importers:
 
   examples/openai-basic:
     dependencies:
-      '@agentgate/core':
+      '@miodragmtasic/agentgate-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@agentgate/openai':
+      '@miodragmtasic/agentgate-openai':
         specifier: workspace:*
         version: link:../../packages/openai
       openai:
@@ -77,8 +134,8 @@ importers:
 
   packages/anthropic:
     dependencies:
-      '@agentgate/core':
-        specifier: workspace:*
+      '@miodragmtasic/agentgate-core':
+        specifier: 0.1.0
         version: link:../core
     devDependencies:
       '@anthropic-ai/sdk':
@@ -95,7 +152,7 @@ importers:
         version: 2.1.9(@types/node@25.5.0)
 
   packages/core:
-    optionalDependencies:
+    dependencies:
       yaml:
         specifier: ^2.6.0
         version: 2.8.2
@@ -115,8 +172,8 @@ importers:
 
   packages/mcp:
     dependencies:
-      '@agentgate/core':
-        specifier: workspace:*
+      '@miodragmtasic/agentgate-core':
+        specifier: 0.1.0
         version: link:../core
     devDependencies:
       '@modelcontextprotocol/sdk':
@@ -137,8 +194,8 @@ importers:
 
   packages/openai:
     dependencies:
-      '@agentgate/core':
-        specifier: workspace:*
+      '@miodragmtasic/agentgate-core':
+        specifier: 0.1.0
         version: link:../core
     devDependencies:
       openai:
@@ -3465,8 +3522,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  yaml@2.8.2:
-    optional: true
+  yaml@2.8.2: {}
 
   zod-to-json-schema@3.25.1(zod@3.25.76):
     dependencies:

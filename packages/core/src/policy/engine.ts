@@ -38,18 +38,10 @@ export class PolicyEngine {
 			};
 		}
 
-		const effectiveRoles = getEffectiveRoles(
-			request.identity,
-			this.policies.roles ?? {},
-		);
+		const effectiveRoles = getEffectiveRoles(request.identity, this.policies.roles ?? {});
 
 		// Check deny rules first (deny takes precedence)
-		const denyResult = this.evaluateRules(
-			toolPolicy.deny,
-			'deny',
-			request,
-			effectiveRoles,
-		);
+		const denyResult = this.evaluateRules(toolPolicy.deny, 'deny', request, effectiveRoles);
 		if (denyResult) {
 			return {
 				verdict: 'deny',
@@ -62,12 +54,7 @@ export class PolicyEngine {
 		}
 
 		// Check allow rules
-		const allowResult = this.evaluateRules(
-			toolPolicy.allow,
-			'allow',
-			request,
-			effectiveRoles,
-		);
+		const allowResult = this.evaluateRules(toolPolicy.allow, 'allow', request, effectiveRoles);
 
 		if (!allowResult) {
 			const defaultVerdict = this.policies.defaults?.verdict ?? 'deny';
@@ -93,6 +80,14 @@ export class PolicyEngine {
 				if (approval.when.params) {
 					const paramCheck = checkParamConstraints(approval.when.params, request.params);
 					needsApproval = needsApproval && paramCheck.passed;
+				}
+				if (approval.when.conditions) {
+					const conditionCheck = checkConditions(
+						this.resolveConditions(approval.when.conditions),
+						request.identity,
+						request.params,
+					);
+					needsApproval = needsApproval && conditionCheck.passed;
 				}
 			}
 
@@ -166,7 +161,10 @@ export class PolicyEngine {
 		const ruleList = Array.isArray(rules) ? rules : [rules];
 
 		for (let i = 0; i < ruleList.length; i++) {
-			const rule = ruleList[i]!;
+			const rule = ruleList[i];
+			if (!rule) {
+				continue;
+			}
 			const ruleName = `${type}[${i}]`;
 
 			// Check role access
@@ -178,34 +176,21 @@ export class PolicyEngine {
 			// Check param constraints
 			if (rule.params) {
 				const paramResult = checkParamConstraints(rule.params, request.params);
-				if (type === 'deny' && paramResult.passed) {
-					// Deny rule: params matched a blocked pattern
-					return {
-						verdict: 'deny',
-						reason: `Parameter "${paramResult.failedParam}" ${paramResult.failedReason}`,
-						ruleName,
-					};
-				}
-				if (type === 'deny' && !paramResult.passed) {
-					// For deny rules with "contains" checks, the logic is inverted:
-					// The deny rule fires when the param MATCHES the blocked pattern
+				if (!paramResult.passed) {
 					continue;
-				}
-				if (type === 'allow' && !paramResult.passed) {
-					return null; // Allow rule's constraints not met
 				}
 			}
 
 			// Check conditions
 			if (rule.conditions) {
 				const condResult = checkConditions(
-					rule.conditions,
+					this.resolveConditions(rule.conditions),
 					request.identity,
 					request.params,
 				);
 				if (!condResult.passed) {
 					if (type === 'deny') continue;
-					return null;
+					continue;
 				}
 			}
 
@@ -227,5 +212,18 @@ export class PolicyEngine {
 		}
 
 		return null;
+	}
+
+	private resolveConditions(
+		conditions: Record<string, import('./types.js').PolicyCondition>,
+	): Record<string, import('./types.js').PolicyCondition> {
+		const resolved: Record<string, import('./types.js').PolicyCondition> = {};
+
+		for (const [name, condition] of Object.entries(conditions)) {
+			const sharedCondition = this.policies.conditions?.[name];
+			resolved[name] = sharedCondition ? { ...sharedCondition, ...condition } : condition;
+		}
+
+		return resolved;
 	}
 }

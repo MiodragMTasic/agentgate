@@ -37,5 +37,6 @@ export function parseDuration(duration: string): number {
 		h: 3_600_000,
 		d: 86_400_000,
 	};
-	return Number(amount) * (multipliers[unit!] ?? 1000);
+	const multiplier = unit ? multipliers[unit] : undefined;
+	return Number(amount) * (multiplier ?? 1000);
 }
