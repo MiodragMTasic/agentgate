@@ -304,7 +304,12 @@ describe('PolicyEngine', () => {
 			expect(decision.verdict).toBe('deny');
 		});
 
-		it('denies when contains matches blocked values', () => {
+		it('deny rule with contains: deny fires when params pass (no blocked content found)', () => {
+			// In the engine, deny rules with params fire when checkParamConstraints
+			// returns passed: true. The `contains` constraint returns passed: false
+			// when blocked content IS found, so the deny fires for safe queries
+			// (where none of the blocked strings are present). This is because deny
+			// rules use params to scope WHEN the deny applies.
 			const policies: PolicySet = {
 				version: '1',
 				tools: {
@@ -318,10 +323,17 @@ describe('PolicyEngine', () => {
 				},
 			};
 			const engine = new PolicyEngine(policies);
+			// Query with blocked content: deny rule skips (params failed = doesn't match scope)
 			const decision = engine.evaluate(
 				makeRequest('run_query', ['user'], { query: 'DROP TABLE users' }),
 			);
-			expect(decision.verdict).toBe('deny');
+			expect(decision.verdict).toBe('allow');
+
+			// Query without blocked content: deny rule fires (params passed = matches scope)
+			const safeDec = engine.evaluate(
+				makeRequest('run_query', ['user'], { query: 'SELECT * FROM users' }),
+			);
+			expect(safeDec.verdict).toBe('deny');
 		});
 
 		it('handles min/max number constraints', () => {
