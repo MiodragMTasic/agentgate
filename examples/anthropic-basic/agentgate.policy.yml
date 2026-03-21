@@ -1,0 +1,55 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  user:
+    description: Standard user with read-only access
+  agent:
+    description: AI agent with tool execution permissions
+    inherits:
+      - user
+  admin:
+    description: Full access to all tools
+    inherits:
+      - agent
+
+tools:
+  # Weather lookups — safe for all roles
+  get_weather:
+    allow:
+      - roles: [user, agent, admin]
+    rateLimit:
+      maxRequests: 30
+      window: 1m
+      scope: identity:tool
+
+  # Email sending — restricted by domain
+  send_email:
+    allow:
+      - roles: [agent, admin]
+        params:
+          to:
+            # Only allow sending to internal domains
+            pattern: "^[^@]+@(mycompany\\.com|mycompany\\.io)$"
+    deny:
+      - params:
+          to:
+            # Block competitor domains explicitly
+            contains: ["@competitor.com", "@rival.io"]
+    rateLimit:
+      maxRequests: 10
+      window: 1h
+      scope: identity
+
+  # File operations — admin only
+  read_file:
+    allow:
+      - roles: [admin]
+        params:
+          path:
+            # Only allow reading from safe directories
+            startsWith: "/data/"
+            notStartsWith: ["/data/secrets/", "/data/.env"]

@@ -1,0 +1,89 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  reader:
+    description: Can read files and search
+  writer:
+    description: Can read and write files
+    inherits:
+      - reader
+  operator:
+    description: Can execute system commands
+    inherits:
+      - writer
+
+tools:
+  # File reading — all roles
+  read_file:
+    allow:
+      - roles: [reader, writer, operator]
+        params:
+          path:
+            # Restrict to workspace directory
+            startsWith: "/workspace/"
+            # Block sensitive paths
+            notStartsWith: ["/workspace/.env", "/workspace/.git/", "/workspace/secrets/"]
+            # Block sensitive file types
+            notContains: [".pem", ".key", ".secret"]
+    rateLimit:
+      maxRequests: 60
+      window: 1m
+      scope: identity:tool
+
+  # File writing — writers and above
+  write_file:
+    allow:
+      - roles: [writer, operator]
+        params:
+          path:
+            startsWith: "/workspace/"
+            notStartsWith: ["/workspace/.env", "/workspace/.git/"]
+          content:
+            maxLength: 100000
+    rateLimit:
+      maxRequests: 20
+      window: 1m
+      scope: identity:tool
+    cost: 0.10
+    budget:
+      perUser:
+        hourly: 5.00
+        daily: 50.00
+
+  # Search — all roles, heavily rate-limited
+  search_files:
+    allow:
+      - roles: [reader, writer, operator]
+        params:
+          directory:
+            startsWith: "/workspace/"
+          pattern:
+            maxLength: 200
+    rateLimit:
+      maxRequests: 30
+      window: 1m
+      scope: identity
+
+  # Shell commands — operator only
+  run_command:
+    allow:
+      - roles: [operator]
+        params:
+          command:
+            # Block dangerous commands
+            notContains: ["rm -rf", "sudo", "chmod 777", "curl | sh", "wget | bash"]
+          workdir:
+            startsWith: "/workspace/"
+    rateLimit:
+      maxRequests: 10
+      window: 5m
+      scope: identity:tool
+    cost: 0.25
+    budget:
+      perUser:
+        hourly: 10.00
+        daily: 50.00

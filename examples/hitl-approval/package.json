@@ -1,0 +1,16 @@
+{
+  "name": "agentgate-example-hitl",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@agentgate/core": "workspace:*",
+    "@agentgate/anthropic": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "@agentgate/cli",
+  "version": "0.1.0",
+  "description": "CLI for AgentGate - Permission middleware for AI agents",
+  "type": "module",
+  "bin": {
+    "agentgate": "./dist/bin/agentgate.js"
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/bin/agentgate.ts",
+    "clean": "rm -rf dist"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miodrag/agentgate",
+    "directory": "apps/cli"
+  },
+  "dependencies": {
+    "@agentgate/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

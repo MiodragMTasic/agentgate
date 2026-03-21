@@ -1,0 +1,77 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  agent:
+    description: AI agent that can perform actions with oversight
+  supervisor:
+    description: Human supervisor who approves high-risk actions
+
+tools:
+  # Low-risk: auto-approved, no human needed
+  search_knowledge_base:
+    allow:
+      - roles: [agent]
+    rateLimit:
+      maxRequests: 50
+      window: 1m
+
+  # Medium-risk: auto-approved but audited
+  draft_response:
+    allow:
+      - roles: [agent]
+        params:
+          channel:
+            enum: ["internal", "draft"]
+    rateLimit:
+      maxRequests: 20
+      window: 1m
+
+  # High-risk: requires human approval before execution
+  send_customer_email:
+    allow:
+      - roles: [agent]
+    requireApproval:
+      when:
+        roles: [agent]
+      approvers: [supervisor]
+      timeout: 5m
+      timeoutAction: deny
+      message: "Agent wants to send an email to a customer. Please review."
+
+  # Critical: always requires approval, even for high amounts
+  process_refund:
+    allow:
+      - roles: [agent]
+    requireApproval:
+      when:
+        roles: [agent]
+      approvers: [supervisor]
+      timeout: 10m
+      timeoutAction: deny
+      message: "Agent wants to process a refund. Please review the amount and reason."
+    cost: 1.00
+    budget:
+      perUser:
+        daily: 500.00
+        monthly: 5000.00
+
+  # Dangerous: requires approval + restricted parameters
+  delete_account:
+    allow:
+      - roles: [agent]
+        params:
+          reason:
+            enum: ["customer_request", "fraud", "compliance"]
+          confirm:
+            enum: [true]
+    requireApproval:
+      when:
+        roles: [agent]
+      approvers: [supervisor]
+      timeout: 15m
+      timeoutAction: deny
+      message: "CRITICAL: Agent wants to delete a customer account. This is irreversible."

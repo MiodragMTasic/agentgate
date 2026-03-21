@@ -18,7 +18,11 @@
       }
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -27,7 +31,16 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
-  "keywords": ["ai", "agent", "permissions", "authorization", "middleware", "tools", "llm", "mcp"],
+  "keywords": [
+    "ai",
+    "agent",
+    "permissions",
+    "authorization",
+    "middleware",
+    "tools",
+    "llm",
+    "mcp"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -35,6 +48,7 @@
     "directory": "packages/core"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"

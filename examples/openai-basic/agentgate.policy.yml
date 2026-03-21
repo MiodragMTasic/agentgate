@@ -1,0 +1,71 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  viewer:
+    description: Read-only access
+  editor:
+    description: Can modify data
+    inherits:
+      - viewer
+  admin:
+    description: Full access
+    inherits:
+      - editor
+
+tools:
+  # Database queries — viewers and above
+  query_database:
+    allow:
+      - roles: [viewer, editor, admin]
+        params:
+          query:
+            # Block destructive SQL keywords
+            notContains: ["DROP", "DELETE", "TRUNCATE", "ALTER"]
+          table:
+            # Restrict to allowed tables
+            enum: ["users", "orders", "products", "analytics"]
+    rateLimit:
+      maxRequests: 100
+      window: 1m
+      scope: identity
+
+  # Record updates — editors and above
+  update_record:
+    allow:
+      - roles: [editor, admin]
+        params:
+          table:
+            enum: ["orders", "products"]
+          id:
+            pattern: "^[a-zA-Z0-9_-]+$"
+    rateLimit:
+      maxRequests: 20
+      window: 1m
+      scope: identity:tool
+
+  # User management — admin only
+  manage_users:
+    allow:
+      - roles: [admin]
+    cost: 0.50
+    budget:
+      perUser:
+        daily: 25.00
+        monthly: 200.00
+
+  # Webhook calls — rate-limited
+  call_webhook:
+    allow:
+      - roles: [editor, admin]
+        params:
+          url:
+            # Only allow internal webhooks
+            startsWith: "https://api.internal."
+    rateLimit:
+      maxRequests: 5
+      window: 10m
+      scope: identity:tool
