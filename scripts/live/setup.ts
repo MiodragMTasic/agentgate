@@ -103,8 +103,10 @@ async function main() {
 	);
 	console.log('');
 	console.log('How to use this');
-	console.log('1. Open the secrets file above.');
-	console.log('2. Paste in one or both API keys.');
+	console.log(
+		'1. If Codex or Claude Code already works here, you usually do not need to change this file.',
+	);
+	console.log('2. Only add API keys if you want the lower-level SDK/API proof path.');
 	console.log('3. Run the matching live suite.');
 	console.log('');
 	console.log('Fast path');
@@ -121,6 +123,7 @@ async function main() {
 	);
 	console.log('- If not, run `codex login` in your terminal.');
 	console.log('- Optional advanced path: use an OPENAI_API_KEY for the lower-level SDK proof.');
+	console.log('- OPENAI_MODEL is an optional advanced override for the raw API path only.');
 	console.log(`- API keys: ${OPENAI_KEYS_URL}`);
 	console.log(`- Billing explainer: ${OPENAI_BILLING_URL}`);
 	console.log(`- Quickstart: ${OPENAI_QUICKSTART_URL}`);
@@ -129,6 +132,7 @@ async function main() {
 	console.log('- Anthropic live proof can run in two modes: API key or logged-in Claude Code.');
 	console.log('- If Claude Code already works on this machine, the harness can reuse that auth.');
 	console.log('- If not, run `claude auth login` or `claude setup-token` in your terminal.');
+	console.log('- ANTHROPIC_MODEL is an optional advanced override for the raw SDK path only.');
 	console.log(`- API access: ${ANTHROPIC_API_ACCESS_URL}`);
 	console.log(`- Quickstart: ${ANTHROPIC_QUICKSTART_URL}`);
 	console.log(`- Billing explainer: ${ANTHROPIC_BILLING_URL}`);

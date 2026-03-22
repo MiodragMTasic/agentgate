@@ -30,6 +30,13 @@ User request
 
 So AgentGate is not "the AI." It is the policy firewall in front of the AI's tools.
 
+## What AgentGate Does Not Do
+
+AgentGate does not pick your model for you.
+
+You still choose that in Claude Code, Codex, OpenAI, Anthropic, or your own runtime.
+AgentGate only sees the resulting tool call and decides whether that call is allowed.
+
 ## How This Could Help Wanderlust
 
 Wanderlust already has the kind of actions an AI helper could easily misuse:
@@ -165,6 +172,27 @@ Then open the generated `agentgate.onboarding.md` and do only this:
 5. only then wire it into your MCP or runtime integration
 
 That gives you a small, understandable first success instead of a giant security rewrite.
+
+## Visual Explainer
+
+If you want the "show me what this thing actually does" version instead of reading prose:
+
+```bash
+pnpm onboarding:serve
+```
+
+Then open:
+
+```text
+http://localhost:4173
+```
+
+That single-page explainer walks through:
+
+- where AgentGate sits in the stack
+- the difference between Claude Code / Codex tandem mode and raw SDK mode
+- when API keys are actually needed
+- what a first Wanderlust rollout would look like
 
 ## CLI Quick Start
 
@@ -353,7 +381,7 @@ const tool = gateTool(gate, { name: 'get_weather', identity: user, run, ... });
 // Option 2: Wrap an entire tool runner
 const runner = createGateToolRunner(gate, user);
 const response = await client.beta.messages.runTools({
-  model: 'claude-sonnet-4-5-20250929',
+  model: process.env.ANTHROPIC_MODEL ?? 'your-anthropic-model',
   ...runner.wrapParams({ tools, messages }),
 });
 ```

@@ -779,7 +779,7 @@ export async function runOpenAISuite(args: LiveArgs): Promise<SuiteSummary> {
 	const env = await loadEnvironment();
 	const runRoot = await createRunRoot(args);
 	const suiteDir = await createSuiteDir(runRoot, SUITE);
-	const model = env.OPENAI_MODEL ?? 'gpt-5.4';
+	const apiModel = env.OPENAI_MODEL ?? 'gpt-5.4';
 	const notes: string[] = [];
 	const argv = process.argv.slice(2);
 	const forceApi = wantsApiMode(argv);
@@ -789,7 +789,7 @@ export async function runOpenAISuite(args: LiveArgs): Promise<SuiteSummary> {
 		const summary: SuiteSummary = {
 			suite: SUITE,
 			status: 'skipped',
-			model,
+			model: apiModel,
 			startedAt,
 			completedAt: new Date().toISOString(),
 			runDir: suiteDir,
@@ -807,10 +807,11 @@ export async function runOpenAISuite(args: LiveArgs): Promise<SuiteSummary> {
 	const cases: CaseResult[] = [];
 
 	const shouldUseCodex = forceCodex || (!forceApi && Boolean(codexAuth?.loggedIn));
+	const model = shouldUseCodex ? `codex-cli (${apiModel})` : apiModel;
 
 	if (shouldUseCodex) {
 		for (const scenario of scenarios) {
-			const results = await runScenarioViaCodex(model, suiteDir, scenario);
+			const results = await runScenarioViaCodex(apiModel, suiteDir, scenario);
 			cases.push(...results);
 		}
 		notes.push(
@@ -823,7 +824,7 @@ export async function runOpenAISuite(args: LiveArgs): Promise<SuiteSummary> {
 		);
 		const client = new OpenAI({ apiKey });
 		for (const scenario of scenarios) {
-			const results = await runScenario(client, model, suiteDir, scenario);
+			const results = await runScenario(client, apiModel, suiteDir, scenario);
 			cases.push(...results);
 		}
 		notes.push('Executed via raw OpenAI API key / Responses API.');

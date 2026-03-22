@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>AgentGate, Explained</title>
+		<style>
+			:root {
+				--paper: #f6f1e7;
+				--paper-strong: #fffaf0;
+				--ink: #1f1c19;
+				--ink-soft: #4f463f;
+				--line: #cfbfa8;
+				--accent: #0f766e;
+				--accent-soft: #d9f3ef;
+				--warn: #8a3b12;
+				--warn-soft: #f7e5d9;
+				--shadow: 0 20px 50px rgba(47, 39, 29, 0.08);
+				--radius: 22px;
+				--mono: "SFMono-Regular", "JetBrains Mono", "IBM Plex Mono", Consolas, monospace;
+				--sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
+				--serif: Iowan Old Style, Palatino Linotype, Book Antiqua, Baskerville, Georgia, serif;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				font-family: var(--sans);
+				color: var(--ink);
+				background:
+					radial-gradient(circle at top left, rgba(15, 118, 110, 0.1), transparent 30%),
+					radial-gradient(circle at top right, rgba(138, 59, 18, 0.08), transparent 25%),
+					linear-gradient(180deg, #f8f3ea 0%, #f2ebde 100%);
+				line-height: 1.55;
+			}
+
+			main {
+				max-width: 1180px;
+				margin: 0 auto;
+				padding: 48px 20px 88px;
+			}
+
+			.hero {
+				background: rgba(255, 250, 240, 0.84);
+				backdrop-filter: blur(8px);
+				border: 1px solid rgba(207, 191, 168, 0.8);
+				border-radius: 34px;
+				box-shadow: var(--shadow);
+				padding: 28px;
+				display: grid;
+				gap: 24px;
+			}
+
+			.eyebrow,
+			.kicker,
+			.diagram-label {
+				font-family: var(--mono);
+				font-size: 12px;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+				color: var(--ink-soft);
+			}
+
+			.kicker {
+				display: inline-flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			.kicker::before {
+				content: "";
+				width: 48px;
+				height: 1px;
+				background: var(--line);
+			}
+
+			h1,
+			h2,
+			h3 {
+				font-family: var(--serif);
+				margin: 0;
+				letter-spacing: -0.02em;
+				line-height: 1;
+			}
+
+			h1 {
+				font-size: clamp(42px, 8vw, 82px);
+			}
+
+			h2 {
+				font-size: clamp(28px, 4vw, 46px);
+			}
+
+			h3 {
+				font-size: 24px;
+			}
+
+			p {
+				margin: 0;
+				color: var(--ink-soft);
+				font-size: 17px;
+			}
+
+			.hero-grid,
+			.two-up,
+			.three-up,
+			.process-grid,
+			.wanderlust-grid {
+				display: grid;
+				gap: 18px;
+			}
+
+			.hero-grid {
+				grid-template-columns: 1.15fr 0.85fr;
+				align-items: start;
+			}
+
+			.card,
+			.metric,
+			.diagram,
+			.step,
+			.panel {
+				background: var(--paper-strong);
+				border: 1px solid var(--line);
+				border-radius: var(--radius);
+				box-shadow: var(--shadow);
+			}
+
+			.card,
+			.panel,
+			.metric {
+				padding: 20px;
+			}
+
+			.metric {
+				display: grid;
+				gap: 8px;
+			}
+
+			.metric strong {
+				font-size: 28px;
+				font-family: var(--serif);
+			}
+
+			section {
+				margin-top: 28px;
+			}
+
+			.section-head {
+				margin-bottom: 18px;
+				display: grid;
+				gap: 8px;
+				max-width: 760px;
+			}
+
+			.diagram {
+				padding: 22px;
+				overflow: hidden;
+			}
+
+			.flow-row,
+			.flow-stack {
+				display: flex;
+				gap: 12px;
+				align-items: center;
+				flex-wrap: wrap;
+			}
+
+			.flow-stack {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.node {
+				flex: 1 1 180px;
+				min-width: 170px;
+				padding: 16px;
+				border-radius: 18px;
+				border: 1px solid var(--line);
+				background: #fffdf7;
+			}
+
+			.node strong {
+				display: block;
+				margin-bottom: 6px;
+				font-size: 18px;
+				color: var(--ink);
+			}
+
+			.node p {
+				font-size: 14px;
+			}
+
+			.arrow {
+				font-family: var(--mono);
+				font-size: 26px;
+				color: var(--accent);
+				padding: 0 4px;
+			}
+
+			.node.accent {
+				background: var(--accent-soft);
+				border-color: rgba(15, 118, 110, 0.3);
+			}
+
+			.node.warn {
+				background: var(--warn-soft);
+				border-color: rgba(138, 59, 18, 0.24);
+			}
+
+			.two-up {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+			}
+
+			.three-up,
+			.process-grid,
+			.wanderlust-grid {
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+			}
+
+			.list {
+				display: grid;
+				gap: 10px;
+				margin-top: 14px;
+			}
+
+			.list-item {
+				display: flex;
+				gap: 10px;
+				align-items: flex-start;
+				font-size: 15px;
+				color: var(--ink-soft);
+			}
+
+			.dot {
+				width: 9px;
+				height: 9px;
+				border-radius: 50%;
+				margin-top: 8px;
+				background: var(--accent);
+				flex: 0 0 auto;
+			}
+
+			.dot.warn {
+				background: var(--warn);
+			}
+
+			.step {
+				padding: 18px;
+				display: grid;
+				gap: 10px;
+			}
+
+			.step-number {
+				font-family: var(--mono);
+				font-size: 12px;
+				letter-spacing: 0.18em;
+				text-transform: uppercase;
+				color: var(--accent);
+			}
+
+			code,
+			pre {
+				font-family: var(--mono);
+			}
+
+			pre {
+				margin: 0;
+				padding: 16px;
+				border-radius: 18px;
+				background: #1f1b18;
+				color: #f7efe2;
+				overflow: auto;
+				font-size: 13px;
+				line-height: 1.5;
+			}
+
+			.inline-code {
+				display: inline-block;
+				padding: 2px 8px;
+				border-radius: 999px;
+				background: rgba(15, 118, 110, 0.1);
+				color: var(--accent);
+				font-family: var(--mono);
+				font-size: 13px;
+			}
+
+			.key-grid {
+				display: grid;
+				grid-template-columns: 1.2fr 0.8fr 1fr;
+				gap: 10px;
+				margin-top: 16px;
+			}
+
+			.key-grid .row {
+				display: contents;
+			}
+
+			.key-grid div {
+				padding: 12px 14px;
+				border-bottom: 1px solid var(--line);
+				font-size: 15px;
+				color: var(--ink-soft);
+			}
+
+			.key-grid .head {
+				font-family: var(--mono);
+				font-size: 12px;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--ink);
+				background: rgba(15, 118, 110, 0.08);
+				border-radius: 14px 14px 0 0;
+				border-bottom: none;
+			}
+
+			.result-pill {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				padding: 6px 10px;
+				border-radius: 999px;
+				font-family: var(--mono);
+				font-size: 12px;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+			}
+
+			.result-pill.allow {
+				background: rgba(15, 118, 110, 0.12);
+				color: var(--accent);
+			}
+
+			.result-pill.warn {
+				background: rgba(138, 59, 18, 0.12);
+				color: var(--warn);
+			}
+
+			.callout {
+				padding: 18px;
+				border-radius: 20px;
+				background: linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(255, 250, 240, 0.9));
+				border: 1px solid rgba(15, 118, 110, 0.18);
+			}
+
+			footer {
+				margin-top: 28px;
+				padding: 20px;
+				border-top: 1px solid rgba(207, 191, 168, 0.8);
+				color: var(--ink-soft);
+				font-size: 14px;
+			}
+
+			@media (max-width: 980px) {
+				.hero-grid,
+				.two-up,
+				.three-up,
+				.process-grid,
+				.wanderlust-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.key-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.key-grid .head {
+					border-radius: 12px;
+				}
+
+				.key-grid div {
+					border-bottom: 1px solid rgba(207, 191, 168, 0.6);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<header class="hero">
+				<div class="kicker">AgentGate onboarding explainer</div>
+				<div class="hero-grid">
+					<div class="section-head">
+						<h1>AgentGate, explained like a product instead of a puzzle.</h1>
+						<p>
+							AgentGate is not the model. It is the policy layer in front of the model’s
+							tools. Claude Code, Codex, OpenAI, Anthropic, or MCP can still choose tools,
+							but AgentGate decides whether those tool calls are allowed, denied, or paused
+							for approval.
+						</p>
+					</div>
+					<div class="two-up">
+						<div class="metric">
+							<span class="eyebrow">One question</span>
+							<strong>Should this exact tool call be allowed right now?</strong>
+							<p>That is the whole job of AgentGate.</p>
+						</div>
+						<div class="metric">
+							<span class="eyebrow">Best fit</span>
+							<strong>Agents that can touch real systems</strong>
+							<p>Files, commands, email, deploys, money actions, admin tools, and MCP.</p>
+						</div>
+					</div>
+				</div>
+			</header>
+
+			<section>
+				<div class="section-head">
+					<div class="diagram-label">Diagram 1</div>
+					<h2>Where AgentGate sits</h2>
+					<p>
+						The easiest mistake is to think AgentGate is “another AI.” It is not. It is the
+						decision point between an agent runtime and the tools that can affect your code,
+						users, money, or production state.
+					</p>
+				</div>
+				<div class="diagram">
+					<div class="flow-row">
+						<div class="node">
+							<strong>User request</strong>
+							<p>“Check the build, email the beta user, and deploy a preview.”</p>
+						</div>
+						<div class="arrow">→</div>
+						<div class="node">
+							<strong>Agent runtime</strong>
+							<p>Claude Code, Codex, OpenAI, Anthropic, or an MCP client decides which tool to call.</p>
+						</div>
+						<div class="arrow">→</div>
+						<div class="node accent">
+							<strong>AgentGate</strong>
+							<p>Checks policy, params, rate limits, budgets, and approval requirements.</p>
+						</div>
+						<div class="arrow">→</div>
+						<div class="node warn">
+							<strong>Real tool</strong>
+							<p>Files, commands, deploys, email, admin APIs, database access, Stripe, Firebase.</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<div class="section-head">
+					<div class="diagram-label">Diagram 2</div>
+					<h2>There are really two onboarding paths</h2>
+					<p>
+						The core confusion came from mixing together two valid but different setups.
+						Most users should start with the tandem path on the left.
+					</p>
+				</div>
+				<div class="two-up">
+					<div class="card">
+						<div class="diagram-label">Path A · recommended first</div>
+						<h3>Claude Code / Codex in tandem</h3>
+						<div class="list">
+							<div class="list-item"><span class="dot"></span><span>You already use Claude Code or Codex.</span></div>
+							<div class="list-item"><span class="dot"></span><span>You expose risky project actions as MCP tools.</span></div>
+							<div class="list-item"><span class="dot"></span><span>AgentGate sits in front of those MCP tools.</span></div>
+							<div class="list-item"><span class="dot"></span><span>The agent still feels normal to use, but the dangerous calls are filtered.</span></div>
+						</div>
+						<div class="callout" style="margin-top: 16px;">
+							<strong>Use this when:</strong>
+							<p>
+								You want Claude Code or Codex to help with a real project without being able to
+								read secrets, quietly deploy, or run destructive commands.
+							</p>
+						</div>
+					</div>
+					<div class="card">
+						<div class="diagram-label">Path B · lower-level integration</div>
+						<h3>Direct OpenAI / Anthropic SDK wrapping</h3>
+						<div class="list">
+							<div class="list-item"><span class="dot"></span><span>You already have app code that defines tools in the vendor SDK.</span></div>
+							<div class="list-item"><span class="dot"></span><span>You wrap those tool definitions with AgentGate adapters.</span></div>
+							<div class="list-item"><span class="dot"></span><span>AgentGate enforces policy before the tool executes.</span></div>
+							<div class="list-item"><span class="dot"></span><span>This is ideal for application code, backends, and custom agents.</span></div>
+						</div>
+						<div class="callout" style="margin-top: 16px;">
+							<strong>Use this when:</strong>
+							<p>
+								You are building the agent product itself and already own the direct SDK tool
+								wiring.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<div class="section-head">
+					<div class="diagram-label">Diagram 3</div>
+					<h2>When do I need API keys or model overrides?</h2>
+					<p>
+						Usually less often than you think. The tandem proof path can reuse the auth you
+						already have in Codex or Claude Code.
+					</p>
+				</div>
+				<div class="panel">
+					<div class="key-grid">
+						<div class="head">Situation</div>
+						<div class="head">Do I need a key?</div>
+						<div class="head">Why</div>
+
+						<div>You already use Codex on this machine</div>
+						<div><span class="result-pill allow">No</span></div>
+						<div>The default OpenAI tandem proof can reuse your Codex login.</div>
+
+						<div>You already use Claude Code on this machine</div>
+						<div><span class="result-pill allow">No</span></div>
+						<div>The default Anthropic tandem proof can reuse your Claude Code login or setup token.</div>
+
+						<div>You want the lower-level raw SDK / API proof</div>
+						<div><span class="result-pill warn">Yes</span></div>
+						<div>That path talks directly to the provider SDK instead of the CLI runtime.</div>
+
+						<div>You want to override the exact provider model</div>
+						<div><span class="result-pill warn">Optional</span></div>
+						<div>This is an advanced escape hatch, not part of normal onboarding.</div>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<div class="section-head">
+					<div class="diagram-label">Diagram 4</div>
+					<h2>What this would look like for Wanderlust</h2>
+					<p>
+						Here is the concrete version. Do not try to guard everything on day one. Start
+						with the smallest set of actions that creates a meaningful trust boundary.
+					</p>
+				</div>
+				<div class="wanderlust-grid">
+					<div class="card">
+						<div class="diagram-label">Start allowed</div>
+						<h3>Helpful, low-risk actions</h3>
+						<div class="list">
+							<div class="list-item"><span class="dot"></span><span>Read docs, routes, and safe source files</span></div>
+							<div class="list-item"><span class="dot"></span><span>Run <code class="inline-code">pnpm test</code>, <code class="inline-code">pnpm lint</code>, and <code class="inline-code">pnpm build</code></span></div>
+							<div class="list-item"><span class="dot"></span><span>Inspect safe public trip data</span></div>
+						</div>
+					</div>
+					<div class="card">
+						<div class="diagram-label">Start denied</div>
+						<h3>Things that cross trust boundaries</h3>
+						<div class="list">
+							<div class="list-item"><span class="dot warn"></span><span>Read <code class="inline-code">.env</code> or secret files</span></div>
+							<div class="list-item"><span class="dot warn"></span><span>Run destructive shell commands</span></div>
+							<div class="list-item"><span class="dot warn"></span><span>Write to Firebase Admin or Stripe money flows</span></div>
+						</div>
+					</div>
+					<div class="card">
+						<div class="diagram-label">Start approval-gated</div>
+						<h3>Actions that should pause for a human</h3>
+						<div class="list">
+							<div class="list-item"><span class="dot warn"></span><span>Deploy preview or production</span></div>
+							<div class="list-item"><span class="dot warn"></span><span>Send user-facing outbound email</span></div>
+							<div class="list-item"><span class="dot warn"></span><span>Create reservation or handoff actions that affect real users</span></div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<div class="section-head">
+					<div class="diagram-label">Diagram 5</div>
+					<h2>The first 30 minutes</h2>
+					<p>
+						This is the concrete onboarding sequence a real user should follow. The goal is
+						not “enterprise policy perfection.” The goal is “first useful safety boundary.”
+					</p>
+				</div>
+				<div class="process-grid">
+					<div class="step">
+						<div class="step-number">Step 1</div>
+						<h3>Generate the right starter</h3>
+						<pre>pnpm dlx @miodragmtasic/agentgate-cli init --runtime claude-code --project-name Wanderlust</pre>
+						<p>This creates a policy file, scenarios file, and a runtime-specific onboarding guide.</p>
+					</div>
+					<div class="step">
+						<div class="step-number">Step 2</div>
+						<h3>Rename the sample tools</h3>
+						<p>Replace the starter tool names with your real project actions like <span class="inline-code">read_project_file</span>, <span class="inline-code">run_safe_command</span>, and <span class="inline-code">deploy_preview</span>.</p>
+					</div>
+					<div class="step">
+						<div class="step-number">Step 3</div>
+						<h3>Validate the policy</h3>
+						<pre>agentgate policy validate
+agentgate test</pre>
+						<p>Do this before wiring anything into your live runtime.</p>
+					</div>
+				</div>
+				<div class="process-grid" style="margin-top: 18px;">
+					<div class="step">
+						<div class="step-number">Step 4</div>
+						<h3>Put AgentGate in front of MCP tools</h3>
+						<p>For Claude Code and Codex, the cleanest default is usually guarded MCP tools.</p>
+					</div>
+					<div class="step">
+						<div class="step-number">Step 5</div>
+						<h3>Let the agent use the guarded tools</h3>
+						<p>The runtime still feels normal, but dangerous calls are filtered by policy.</p>
+					</div>
+					<div class="step">
+						<div class="step-number">Step 6</div>
+						<h3>Add more tools later</h3>
+						<p>Only after the first boundary feels trustworthy should you widen the tool surface.</p>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<div class="section-head">
+					<div class="diagram-label">Diagram 6</div>
+					<h2>What the live proof matrix actually proved</h2>
+					<p>
+						The passing matrix does not mean “every edge case on earth is solved.” It means
+						the live flows we care about really did exercise tool calls through AgentGate.
+					</p>
+				</div>
+				<div class="three-up">
+					<div class="card">
+						<div class="diagram-label">OpenAI side</div>
+						<h3>Codex tandem proof</h3>
+						<p>Codex attempted tool calls, and AgentGate enforced allow and deny behavior across realistic scenarios.</p>
+					</div>
+					<div class="card">
+						<div class="diagram-label">Anthropic side</div>
+						<h3>Claude Code tandem proof</h3>
+						<p>Claude Code attempted MCP-backed tool calls, and AgentGate enforced the expected policy outcomes.</p>
+					</div>
+					<div class="card">
+						<div class="diagram-label">MCP boundary</div>
+						<h3>Local transport proof</h3>
+						<p>A real local MCP server/client flow passed through the same policy layer instead of mock direct function calls.</p>
+					</div>
+				</div>
+			</section>
+
+			<footer>
+				<strong>Open locally:</strong> run <code class="inline-code">pnpm onboarding:serve</code>
+				and visit <code class="inline-code">http://localhost:4173</code>. This page is meant
+				to be the “explain it to me simply” bridge between the code and the product story.
+			</footer>
+		</main>
+	</body>
+</html>
