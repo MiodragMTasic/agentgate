@@ -14,6 +14,83 @@ Every AI agent framework lets agents call tools. None of them ask **"should this
 
 AgentGate is a permission layer that sits between your agent and its tools. Define who can call what, with what parameters, how often, and at what cost -- in a single YAML file.
 
+## In Plain English
+
+If Claude Code, Codex, OpenAI, Anthropic, or MCP can make your software **do things**, AgentGate is the layer that decides which of those things are actually allowed.
+
+Think of the stack like this:
+
+```text
+User request
+-> agent runtime chooses a tool
+-> AgentGate checks policy
+-> allow / deny / require approval
+-> tool runs or gets blocked
+```
+
+So AgentGate is not "the AI." It is the policy firewall in front of the AI's tools.
+
+## How This Could Help Wanderlust
+
+Wanderlust already has the kind of actions an AI helper could easily misuse:
+
+- reading project files and docs
+- running build, test, and deploy commands
+- touching Firebase Admin-backed endpoints
+- touching Stripe onboarding flows
+- sending user-facing email
+- creating reservation or travel handoff actions
+
+AgentGate would let you expose those as tools while keeping control.
+
+For example, you could let Claude Code or Codex:
+
+- read trip-planning docs and safe source files
+- run `pnpm test`, `pnpm lint`, and `pnpm build`
+- inspect safe public trip data
+
+while blocking or approval-gating:
+
+- `.env` and secret file reads
+- Firebase Admin writes
+- Stripe Connect or payout-related writes
+- production deploys
+- user-facing outbound email
+- any destructive shell command
+
+That is the whole value proposition in one sentence:
+
+**your agent can still help, but it cannot quietly cross trust boundaries.**
+
+## What Onboarding Would Look Like For Wanderlust
+
+If I were onboarding AgentGate into Wanderlust, I would not start by guarding everything.
+
+I would start with just three tools:
+
+1. `read_project_file`
+   This lets Claude Code or Codex read docs, routes, and safe source files.
+2. `run_safe_command`
+   This allows things like `pnpm test`, `pnpm lint`, and `pnpm build`.
+3. `deploy_preview`
+   This stays approval-gated from day one.
+
+That first version already gives you a meaningful safety boundary:
+
+- the agent can understand the project
+- the agent can verify changes
+- the agent cannot read secrets
+- the agent cannot quietly deploy
+
+Then the second layer would be business tools:
+
+- `send_beta_feedback_email`
+- `start_stripe_connect_onboarding`
+- `create_reservation_handoff`
+- `write_firebase_admin_record`
+
+Those are exactly the kinds of actions where AgentGate matters, because they cross from "helpful coding assistant" into "this system can affect users, money, or production state."
+
 | Feature | AgentGate | OPA | Permit.io | Arcade.dev | Oso |
 | --- | :---: | :---: | :---: | :---: | :---: |
 | TypeScript-native | Yes | No | No | No | No |
@@ -35,14 +112,66 @@ AgentGate is a permission layer that sits between your agent and its tools. Defi
   - Claude Code login via Claude subscription
   - local MCP transport
 
-## Local Quick Start
+## Best Onboarding Path
+
+If you are coming from Claude Code or Codex, the most natural onboarding is:
+
+1. use the CLI to generate a starter policy and onboarding doc
+2. expose your risky project actions as MCP tools
+3. put AgentGate in front of those tools
+4. let Claude Code or Codex call the guarded MCP server
+
+For that path, start here:
 
 ```bash
-pnpm install
-pnpm build
-node ./apps/cli/dist/agentgate.js init
-node ./apps/cli/dist/agentgate.js policy validate
-node ./apps/cli/dist/agentgate.js test
+pnpm dlx @miodragmtasic/agentgate-cli init --runtime claude-code
+```
+
+or:
+
+```bash
+pnpm dlx @miodragmtasic/agentgate-cli init --runtime codex
+```
+
+If you are integrating directly into the vendor SDK instead of Claude Code or Codex:
+
+```bash
+pnpm dlx @miodragmtasic/agentgate-cli init --runtime anthropic
+pnpm dlx @miodragmtasic/agentgate-cli init --runtime openai
+```
+
+Those commands create:
+
+- `agentgate.policy.yml`
+- `agentgate.scenarios.yml`
+- `agentgate.onboarding.md`
+
+The important part is that the generated starter now matches the runtime you actually use.
+
+## Accessible First Run
+
+If you want the simplest possible starting point, this is the path I recommend:
+
+```bash
+pnpm dlx @miodragmtasic/agentgate-cli init --runtime claude-code --project-name Wanderlust
+```
+
+Then open the generated `agentgate.onboarding.md` and do only this:
+
+1. rename the sample tools to match real Wanderlust actions
+2. keep one safe read, one safe command, and one approval-gated action
+3. run `agentgate policy validate`
+4. run `agentgate test`
+5. only then wire it into your MCP or runtime integration
+
+That gives you a small, understandable first success instead of a giant security rewrite.
+
+## CLI Quick Start
+
+```bash
+pnpm dlx @miodragmtasic/agentgate-cli init --runtime claude-code
+pnpm dlx @miodragmtasic/agentgate-cli policy validate
+pnpm dlx @miodragmtasic/agentgate-cli test
 ```
 
 ```typescript

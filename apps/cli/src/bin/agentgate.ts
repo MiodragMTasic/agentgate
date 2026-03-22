@@ -20,11 +20,15 @@ Commands:
 Options:
   --config, -c        Path to policy file (default: ./agentgate.policy.yml)
   --scenarios, -s     Path to test scenarios file (default: ./agentgate.scenarios.yml)
+  --runtime           Starter profile for init: claude-code, codex, mcp, anthropic, openai
+  --project-name      Friendly project name for generated onboarding docs
   --help, -h          Show this help
   --version, -v       Show version
 
 Examples:
   agentgate init
+  agentgate init --runtime claude-code
+  agentgate init --runtime openai --project-name Wanderlust
   agentgate test --config ./policies.yml --scenarios ./agentgate.scenarios.yml
   agentgate capability --role user
   agentgate policy validate
@@ -55,10 +59,12 @@ async function main() {
 
 	const configPath = getFlagValue(args, ['--config', '-c']) ?? './agentgate.policy.yml';
 	const scenariosPath = getFlagValue(args, ['--scenarios', '-s']) ?? './agentgate.scenarios.yml';
+	const runtime = getFlagValue(args, ['--runtime']);
+	const projectName = getFlagValue(args, ['--project-name']);
 
 	switch (command) {
 		case 'init':
-			await initCommand();
+			await initCommand({ runtime, projectName });
 			break;
 		case 'test':
 			await testCommand(configPath, scenariosPath);

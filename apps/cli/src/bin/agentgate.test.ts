@@ -51,9 +51,14 @@ describe('agentgate CLI', () => {
 		});
 		expect(initResult.stdout).toContain('Created ./agentgate.policy.yml');
 		expect(initResult.stdout).toContain('Created ./agentgate.scenarios.yml');
+		expect(initResult.stdout).toContain('Created ./agentgate.onboarding.md');
 		expect(existsSync(join(dir, 'agentgate.policy.yml'))).toBe(true);
 		expect(existsSync(join(dir, 'agentgate.scenarios.yml'))).toBe(true);
+		expect(existsSync(join(dir, 'agentgate.onboarding.md'))).toBe(true);
 		expect(readFileSync(join(dir, 'agentgate.policy.yml'), 'utf8')).toContain('get_weather');
+		expect(readFileSync(join(dir, 'agentgate.onboarding.md'), 'utf8')).toContain(
+			'AgentGate is the policy layer in front of your agent tools.',
+		);
 
 		const validateResult = await execFileAsync('node', [cliEntry, 'policy', 'validate'], {
 			cwd: dir,
@@ -64,6 +69,37 @@ describe('agentgate CLI', () => {
 			cwd: dir,
 		});
 		expect(testResult.stdout).toContain('2/2 scenarios passed');
+	});
+
+	it('init --runtime claude-code creates an MCP-oriented starter', async () => {
+		const dir = makeTempDir();
+
+		const initResult = await execFileAsync(
+			'node',
+			[cliEntry, 'init', '--runtime', 'claude-code', '--project-name', 'Wanderlust'],
+			{ cwd: dir },
+		);
+
+		expect(initResult.stdout).toContain('Runtime profile: Claude Code');
+		expect(readFileSync(join(dir, 'agentgate.policy.yml'), 'utf8')).toContain('read_file');
+		expect(readFileSync(join(dir, 'agentgate.policy.yml'), 'utf8')).toContain('deploy_preview');
+		expect(readFileSync(join(dir, 'agentgate.scenarios.yml'), 'utf8')).toContain(
+			'maintainer preview deploy requires approval',
+		);
+		expect(readFileSync(join(dir, 'agentgate.onboarding.md'), 'utf8')).toContain(
+			'For Claude Code, the cleanest integration is usually:',
+		);
+		expect(readFileSync(join(dir, 'agentgate.onboarding.md'), 'utf8')).toContain('GateMcpServer');
+
+		const validateResult = await execFileAsync('node', [cliEntry, 'policy', 'validate'], {
+			cwd: dir,
+		});
+		expect(validateResult.stdout).toContain('[PASS] Policy is valid');
+
+		const testResult = await execFileAsync('node', [cliEntry, 'test'], {
+			cwd: dir,
+		});
+		expect(testResult.stdout).toContain('5/5 scenarios passed');
 	});
 
 	it('passes when all scenarios match', async () => {
