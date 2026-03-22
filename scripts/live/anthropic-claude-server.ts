@@ -1,11 +1,11 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { AgentGate, type ApprovalRequest, customSink } from '@miodragmtasic/agentgate-core';
-import { GateMcpServer } from '@miodragmtasic/agentgate-mcp';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { AgentGate, type ApprovalRequest, customSink } from '../../packages/core/src/index.ts';
+import { GateMcpServer } from '../../packages/mcp/src/index.ts';
 
 import { getAnthropicScenarioById } from './anthropic-scenarios.js';
 import { ScriptedApprovalTransport, approvedByScript, deniedByScript, sanitize } from './shared.js';

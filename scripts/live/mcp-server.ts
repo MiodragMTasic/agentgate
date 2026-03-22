@@ -1,11 +1,11 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { AgentGate, customSink } from '@miodragmtasic/agentgate-core';
-import { GateMcpServer } from '@miodragmtasic/agentgate-mcp';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { AgentGate, customSink } from '../../packages/core/src/index.ts';
+import { GateMcpServer } from '../../packages/mcp/src/index.ts';
 
 import { ROOT_DIR, sanitize } from './shared.js';
 

@@ -11,7 +11,7 @@ import {
 	type ApprovalResponse,
 	type HITLTransport,
 	customSink,
-} from '@miodragmtasic/agentgate-core';
+} from '../../packages/core/src/index.ts';
 
 export type SuiteName = 'openai' | 'anthropic' | 'mcp';
 export type CaseStatus = 'passed' | 'failed' | 'skipped';

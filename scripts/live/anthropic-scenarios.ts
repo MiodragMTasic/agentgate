@@ -1,12 +1,12 @@
 import { join } from 'node:path';
 
-import { createGateToolRunner, gateTool } from '@miodragmtasic/agentgate-anthropic';
+import { createGateToolRunner, gateTool } from '../../packages/anthropic/src/index.ts';
 import type {
 	AgentGate,
 	ApprovalRequest,
 	ApprovalResponse,
 	Identity,
-} from '@miodragmtasic/agentgate-core';
+} from '../../packages/core/src/index.ts';
 
 import { ROOT_DIR, approvedByScript } from './shared.js';
 

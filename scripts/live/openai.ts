@@ -17,8 +17,8 @@ import {
 	type ApprovalRequest,
 	type ApprovalResponse,
 	type Identity,
-} from '@miodragmtasic/agentgate-core';
-import { gateToolExecutors } from '@miodragmtasic/agentgate-openai';
+} from '../../packages/core/src/index.ts';
+import { gateToolExecutors } from '../../packages/openai/src/index.ts';
 
 import {
 	type CaseResult,

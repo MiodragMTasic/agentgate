@@ -15,7 +15,7 @@ import {
 	AgentGate,
 	type ApprovalRequest,
 	type ApprovalResponse,
-} from '@miodragmtasic/agentgate-core';
+} from '../../packages/core/src/index.ts';
 
 import { type AnthropicScenario, anthropicScenarios as scenarios } from './anthropic-scenarios.js';
 import {
