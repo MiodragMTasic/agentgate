@@ -1,0 +1,26 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  support_admin:
+    description: Tenant-scoped support operator
+
+conditions:
+  same_tenant:
+    expression: 'identity.orgId === params.tenantId'
+
+tools:
+  inspect_tenant_settings:
+    allow:
+      - roles: ["support_admin"]
+        conditions:
+          same_tenant: {}
+
+  view_tenant_billing:
+    allow:
+      - roles: ["support_admin"]
+        conditions:
+          same_tenant: {}

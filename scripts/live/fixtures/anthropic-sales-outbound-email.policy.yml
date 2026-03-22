@@ -1,0 +1,24 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  sales_agent:
+    description: Outbound sales agent
+
+tools:
+  send_sales_email:
+    deny:
+      - params:
+          to:
+            contains: ["@competitor.com", "@mycompany.com"]
+    allow:
+      - roles: ["sales_agent"]
+        params:
+          to:
+            pattern: "^[^@]+@(trustedbuyer\\.com|exampleprospect\\.com)$"
+    rateLimit:
+      maxRequests: 1
+      window: 1h

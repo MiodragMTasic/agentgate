@@ -8,15 +8,39 @@ importers:
 
   .:
     devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.39.0
+        version: 0.39.0
       '@biomejs/biome':
         specifier: ^1.9.0
         version: 1.9.4
       '@changesets/cli':
         specifier: ^2.27.0
         version: 2.30.0(@types/node@25.5.0)
+      '@miodragmtasic/agentgate-anthropic':
+        specifier: workspace:*
+        version: link:packages/anthropic
+      '@miodragmtasic/agentgate-core':
+        specifier: workspace:*
+        version: link:packages/core
+      '@miodragmtasic/agentgate-mcp':
+        specifier: workspace:*
+        version: link:packages/mcp
+      '@miodragmtasic/agentgate-openai':
+        specifier: workspace:*
+        version: link:packages/openai
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.27.1
+        version: 1.27.1(zod@3.25.76)
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
+      openai:
+        specifier: ^4.104.0
+        version: 4.104.0(zod@3.25.76)
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       turbo:
         specifier: ^2.3.0
         version: 2.8.20

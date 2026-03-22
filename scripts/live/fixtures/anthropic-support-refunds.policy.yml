@@ -1,0 +1,31 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  support_agent:
+    description: Frontline support agent
+  supervisor:
+    description: Can approve sensitive support actions
+
+tools:
+  search_knowledge_base:
+    allow:
+      - roles: ["support_agent", "supervisor"]
+
+  process_refund:
+    allow:
+      - roles: ["support_agent", "supervisor"]
+        params:
+          amount:
+            max: 100
+    requireApproval:
+      approvers: ["supervisor"]
+      when:
+        roles: ["support_agent", "supervisor"]
+
+  delete_account:
+    allow:
+      - roles: ["supervisor"]

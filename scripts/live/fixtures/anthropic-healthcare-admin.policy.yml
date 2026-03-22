@@ -1,0 +1,21 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  clinic_agent:
+    description: Non-clinical scheduling assistant
+
+tools:
+  schedule_appointment:
+    allow:
+      - roles: ["clinic_agent"]
+
+  retrieve_patient_record:
+    allow:
+      - roles: ["clinic_agent"]
+        params:
+          fields:
+            notContains: ["ssn", "diagnosis", "medication", "prescription"]

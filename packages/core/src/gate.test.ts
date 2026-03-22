@@ -99,6 +99,70 @@ tools:
 		expect(budget?.remaining).toBe(2);
 	});
 
+	it('records budget spend after an approval resolves to allow', async () => {
+		const transport: HITLTransport = {
+			async requestApproval(request: ApprovalRequest): Promise<ApprovalResponse> {
+				return {
+					requestId: request.id,
+					decision: 'approve',
+					respondedBy: 'approver',
+					respondedAt: new Date(),
+				};
+			},
+		};
+
+		const gate = new AgentGate({
+			policies: {
+				version: '1',
+				defaults: { verdict: 'deny' },
+				roles: {
+					manager: {},
+				},
+				tools: {
+					issue_payout: {
+						allow: { roles: ['manager'] },
+						requireApproval: {
+							when: { roles: ['manager'] },
+						},
+						cost: {
+							base: 0,
+							perParam: {
+								amount: { perUnit: 1 },
+							},
+						},
+						budget: {
+							perUser: {
+								daily: 1000,
+							},
+						},
+					},
+				},
+			},
+			hitl: { transport },
+		});
+
+		const identity = { id: 'manager_1', roles: ['manager'] };
+
+		const first = await gate.evaluate({
+			tool: 'issue_payout',
+			params: { amount: 750 },
+			identity,
+		});
+		const second = await gate.evaluate({
+			tool: 'issue_payout',
+			params: { amount: 400 },
+			identity,
+		});
+		const budget = await gate.getBudget(identity);
+
+		expect(first.verdict).toBe('allow');
+		expect(second.verdict).toBe('deny');
+		expect(second.reason).toContain('Budget exceeded');
+		expect(budget).not.toBeNull();
+		expect(budget?.spent).toBe(750);
+		expect(budget?.remaining).toBe(250);
+	});
+
 	it('allows waiting on an in-flight approval request', async () => {
 		class DeferredTransport implements HITLTransport {
 			private resolveResponse?: (response: ApprovalResponse) => void;

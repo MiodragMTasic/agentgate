@@ -1,0 +1,43 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  reader:
+    description: Read-only workspace assistant
+  operator:
+    description: Operational workspace assistant
+
+tools:
+  read_file:
+    deny:
+      - params:
+          path:
+            contains: [".env", "/secrets/", "id_rsa"]
+    allow:
+      - roles: ["reader", "operator"]
+        params:
+          path:
+            startsWith: "/workspace/"
+
+  search_files:
+    allow:
+      - roles: ["reader", "operator"]
+        params:
+          directory:
+            startsWith: "/workspace/"
+
+  run_command:
+    deny:
+      - params:
+          command:
+            contains: ["rm -rf", "shutdown", "reboot", "terraform destroy", "kubectl delete"]
+    allow:
+      - roles: ["operator"]
+        params:
+          workdir:
+            startsWith: "/workspace/"
+          command:
+            notContains: ["rm -rf", "shutdown", "reboot", "terraform destroy", "kubectl delete"]

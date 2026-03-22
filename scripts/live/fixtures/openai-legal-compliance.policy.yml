@@ -1,0 +1,26 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  legal_analyst:
+    description: Can review and summarize legal documents
+  counsel:
+    description: Can issue final legal notices
+  compliance_manager:
+    description: Can update compliance records
+
+tools:
+  extract_contract_clauses:
+    allow:
+      - roles: ["legal_analyst", "counsel"]
+
+  send_legal_notice:
+    allow:
+      - roles: ["counsel"]
+
+  update_compliance_record:
+    allow:
+      - roles: ["compliance_manager"]

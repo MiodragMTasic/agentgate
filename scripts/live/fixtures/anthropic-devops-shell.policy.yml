@@ -1,0 +1,23 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  ops_agent:
+    description: Safe operational automation
+
+tools:
+  run_command:
+    deny:
+      - params:
+          command:
+            contains: ["rm -rf", "shutdown", "reboot", "terraform destroy", "kubectl delete"]
+    allow:
+      - roles: ["ops_agent"]
+        params:
+          command:
+            notContains: ["rm -rf", "shutdown", "reboot", "terraform destroy", "kubectl delete"]
+          workdir:
+            startsWith: "/workspace"

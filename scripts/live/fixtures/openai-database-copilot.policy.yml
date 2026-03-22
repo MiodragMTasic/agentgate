@@ -1,0 +1,27 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  data_analyst:
+    description: Read-only data analyst
+
+tools:
+  query_database:
+    deny:
+      - params:
+          query:
+            contains: ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER"]
+      - params:
+          table:
+            startsWith: "admin_"
+    allow:
+      - roles: ["data_analyst"]
+        params:
+          query:
+            contains: ["SELECT"]
+            notContains: ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER"]
+          table:
+            enum: ["orders_public", "customers_public", "invoices_public"]

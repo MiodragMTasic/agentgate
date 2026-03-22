@@ -105,58 +105,10 @@ export class AgentGate {
 		const decision = this.engine.evaluate(request);
 		const toolPolicy = this.engine.getToolPolicy(request.tool);
 
-		// Check rate limits
-		if (decision.verdict === 'allow' && this.rateLimiter) {
-			const rateLimit = toolPolicy?.rateLimit ?? this.engine.getPolicies().defaults?.rateLimit;
-			if (rateLimit) {
-				const windowMs = parseDurationLocal(rateLimit.window);
-				const scope = rateLimit.scope ?? 'identity:tool';
-				const key = buildRateLimitKey(scope, request);
-
-				const rule: RateLimitRule = {
-					name: request.tool,
-					tools: request.tool,
-					maxRequests: rateLimit.maxRequests,
-					windowSeconds: windowMs / 1000,
-					scope,
-					strategy: rateLimit.strategy ?? 'sliding-window',
-				};
-
-				const result = await this.rateLimiter.increment(key, rule);
-
-				if (!result.allowed) {
-					const rateLimitedDecision: GateDecision = {
-						...decision,
-						verdict: 'deny',
-						reason: `Rate limit exceeded for tool "${request.tool}" (${rateLimit.maxRequests} per ${rateLimit.window})`,
-					};
-					this.logDecision(rateLimitedDecision, request);
-					this.emit('rate-limit:hit', { tool: request.tool, identity: request.identity });
-					return rateLimitedDecision;
-				}
-			}
-		}
-
-		// Check budget
-		if (decision.verdict === 'allow' && this.budgetTracker && this.costRegistry) {
-			const cost = this.costRegistry.getCost(request.tool, request.params);
-			if (cost > 0 && toolPolicy?.budget) {
-				const status = await this.budgetTracker.check(request.identity, request.tool, cost);
-				if (status.isExceeded) {
-					const budgetDecision: GateDecision = {
-						...decision,
-						verdict: 'deny',
-						reason: `Budget exceeded for tool "${request.tool}" (spent ${status.spent} of ${status.limit})`,
-					};
-					this.logDecision(budgetDecision, request);
-					this.emit('budget:exceeded', {
-						tool: request.tool,
-						identity: request.identity,
-						status,
-					});
-					return budgetDecision;
-				}
-				await this.budgetTracker.record(request.identity, request.tool, cost);
+		if (decision.verdict === 'allow') {
+			const guardedDecision = await this.applyAllowRuntimeGuards(decision, request, toolPolicy);
+			if (guardedDecision) {
+				return guardedDecision;
 			}
 		}
 
@@ -193,6 +145,18 @@ export class AgentGate {
 				approvalTimedOut ? 'approval:expired' : approved ? 'approval:approved' : 'approval:denied',
 				approvalRequest,
 			);
+
+			if (resolvedDecision.verdict === 'allow') {
+				const guardedDecision = await this.applyAllowRuntimeGuards(
+					resolvedDecision,
+					request,
+					toolPolicy,
+				);
+				if (guardedDecision) {
+					return guardedDecision;
+				}
+			}
+
 			this.logDecision(resolvedDecision, request);
 			return resolvedDecision;
 		}
@@ -250,6 +214,67 @@ export class AgentGate {
 
 	getEngine(): PolicyEngine {
 		return this.engine;
+	}
+
+	private async applyAllowRuntimeGuards(
+		decision: GateDecision,
+		request: GateRequest,
+		toolPolicy: ReturnType<PolicyEngine['getToolPolicy']>,
+	): Promise<GateDecision | null> {
+		if (this.rateLimiter) {
+			const rateLimit = toolPolicy?.rateLimit ?? this.engine.getPolicies().defaults?.rateLimit;
+			if (rateLimit) {
+				const windowMs = parseDurationLocal(rateLimit.window);
+				const scope = rateLimit.scope ?? 'identity:tool';
+				const key = buildRateLimitKey(scope, request);
+
+				const rule: RateLimitRule = {
+					name: request.tool,
+					tools: request.tool,
+					maxRequests: rateLimit.maxRequests,
+					windowSeconds: windowMs / 1000,
+					scope,
+					strategy: rateLimit.strategy ?? 'sliding-window',
+				};
+
+				const result = await this.rateLimiter.increment(key, rule);
+
+				if (!result.allowed) {
+					const rateLimitedDecision: GateDecision = {
+						...decision,
+						verdict: 'deny',
+						reason: `Rate limit exceeded for tool "${request.tool}" (${rateLimit.maxRequests} per ${rateLimit.window})`,
+					};
+					this.logDecision(rateLimitedDecision, request);
+					this.emit('rate-limit:hit', { tool: request.tool, identity: request.identity });
+					return rateLimitedDecision;
+				}
+			}
+		}
+
+		if (this.budgetTracker && this.costRegistry) {
+			const cost = this.costRegistry.getCost(request.tool, request.params);
+			if (cost > 0 && toolPolicy?.budget) {
+				const status = await this.budgetTracker.check(request.identity, request.tool, cost);
+				if (status.isExceeded) {
+					const budgetDecision: GateDecision = {
+						...decision,
+						verdict: 'deny',
+						reason: `Budget exceeded for tool "${request.tool}" (spent ${status.spent} of ${status.limit})`,
+					};
+					this.logDecision(budgetDecision, request);
+					this.emit('budget:exceeded', {
+						tool: request.tool,
+						identity: request.identity,
+						status,
+					});
+					return budgetDecision;
+				}
+				await this.budgetTracker.record(request.identity, request.tool, cost);
+			}
+		}
+
+		return null;
 	}
 
 	private emit(event: string, data: unknown): void {

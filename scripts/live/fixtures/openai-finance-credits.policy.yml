@@ -1,0 +1,47 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  finance_agent:
+    description: Can draft low-risk credits
+  finance_manager:
+    description: Can approve and send payouts
+  treasury_admin:
+    description: Can update bank details
+
+tools:
+  draft_store_credit:
+    allow:
+      - roles: ["finance_agent", "finance_manager"]
+        params:
+          amount:
+            max: 50
+
+  issue_vendor_payout:
+    allow:
+      - roles: ["finance_manager"]
+        params:
+          amount:
+            max: 2000
+    requireApproval:
+      approvers: ["finance_manager"]
+      when:
+        roles: ["finance_manager"]
+        params:
+          amount:
+            min: 500
+    cost:
+      base: 0
+      perParam:
+        amount:
+          perUnit: 1
+    budget:
+      perUser:
+        daily: 1000
+
+  update_bank_details:
+    allow:
+      - roles: ["treasury_admin"]

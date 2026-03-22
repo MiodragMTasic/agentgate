@@ -1,0 +1,34 @@
+version: "1"
+
+defaults:
+  verdict: deny
+  audit: true
+
+roles:
+  merchandiser:
+    description: Can manage safe catalog changes
+  pricing_manager:
+    description: Can approve significant pricing changes
+
+tools:
+  lookup_catalog:
+    allow:
+      - roles: ["merchandiser"]
+
+  modify_pricing:
+    allow:
+      - roles: ["merchandiser"]
+        params:
+          changePercent:
+            max: 20
+    requireApproval:
+      approvers: ["pricing_manager"]
+      when:
+        roles: ["merchandiser"]
+        params:
+          changePercent:
+            min: 10
+
+  update_product_copy:
+    allow:
+      - roles: ["merchandiser"]

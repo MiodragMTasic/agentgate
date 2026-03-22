@@ -29,7 +29,11 @@ AgentGate is a permission layer that sits between your agent and its tools. Defi
 
 - The codebase is validated locally and through packed consumer smoke tests.
 - The publish target is the `@miodragmtasic/agentgate-*` package family.
-- The repo is release-prepared, but the packages are not published yet. Treat this as a source checkout until the first npm release actually lands.
+- `v0.1.0` is published on npm and released on GitHub.
+- The live proof matrix passes against:
+  - Codex login via ChatGPT subscription
+  - Claude Code login via Claude subscription
+  - local MCP transport
 
 ## Local Quick Start
 
@@ -76,9 +80,97 @@ const denied = await tool.run({ to: 'info@competitor.com' }); // denied by polic
 pnpm validate:realworld
 ```
 
+## Live Provider Proof
+
+If you want to validate AgentGate against real OpenAI and Anthropic tool-calling flows, start with the setup helper:
+
+```bash
+pnpm live:setup
+```
+
+That command prepares [`.env.local.example`](./.env.local.example) as your working local template if needed, shows which provider keys are missing, and points you to the provider pages you need.
+
+Then run whichever proof you want:
+
+```bash
+pnpm live:openai
+pnpm live:anthropic
+pnpm live:mcp
+pnpm live:matrix
+```
+
+Important:
+
+- OpenAI live proof can run either with a logged-in Codex session or with `OPENAI_API_KEY`.
+- If Codex already works on your machine, `pnpm live:openai` can reuse that auth.
+- Use `pnpm live:openai -- --api` if you explicitly want the lower-level Responses API path.
+- Anthropic live proof can run either with `ANTHROPIC_API_KEY` or with a logged-in Claude Code session.
+- If Claude Code already works on your machine, `pnpm live:anthropic` can reuse that auth.
+- Raw OpenAI API billing is still separate from ChatGPT subscriptions when you choose the API-key path.
+
+## Test It Like a User
+
+The most natural user story is not "I open a dashboard." It is "I already use Codex, Claude Code, or MCP, and I want AgentGate sitting in front of the tools."
+
+### Fastest proof on your own machine
+
+1. Clone the repo and install dependencies:
+
+```bash
+git clone https://github.com/MiodragMTasic/agentgate.git
+cd agentgate
+pnpm install
+```
+
+2. Make sure your agent runtimes already work:
+
+```bash
+codex login status
+claude auth status
+```
+
+If Codex is logged in with ChatGPT and Claude Code is logged in, you do not need raw API keys for the default tandem proof.
+
+3. Run the full proof matrix:
+
+```bash
+pnpm live:matrix
+```
+
+4. Read the generated report:
+
+```bash
+cat output/live-proof/*/summary.md
+```
+
+That run proves three things:
+
+- OpenAI-style tandem flow via logged-in Codex
+- Anthropic-style tandem flow via logged-in Claude Code
+- MCP transport flow via a real local stdio server/client boundary
+
+### Test a single surface
+
+```bash
+pnpm live:openai
+pnpm live:anthropic
+pnpm live:mcp
+```
+
+### Force the lower-level SDK/API path
+
+If you specifically want to test the raw vendor SDK layer instead of the subscription-backed CLI tandem path:
+
+```bash
+pnpm live:openai -- --api
+```
+
+and/or provide `ANTHROPIC_API_KEY` for the direct Anthropic SDK path.
+
 ## Not Yet Proven
 
-- Live Anthropic or OpenAI API calls against a real remote account
+- Raw OpenAI Responses API proof using a valid `OPENAI_API_KEY` in this checkout
+- Raw Anthropic SDK proof using a valid `ANTHROPIC_API_KEY` in this checkout
 - MCP interoperability against a remote third-party server over a real transport
 - Production persistence/load behavior beyond the in-memory stores included here
 - External adoption or traction claims
